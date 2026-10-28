@@ -135,27 +135,27 @@ def get_initial_endpoints_df():
             "Device_Name": "PC1",
             "Department": "Management",
             "VLAN_ID": 10,
-            "IPv4_Address": "Unverified (192.168.10.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
             "Connected_Switch": "Switch0",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "DHCP / Static",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "IP not yet recorded from terminal"
+            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server0",
             "Department": "Management",
             "VLAN_ID": 10,
-            "IPv4_Address": "Unverified (192.168.10.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
             "Connected_Switch": "Switch0",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "Static / DHCP",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server reachability not yet confirmed"
+            "Evidence": "Server IP and reachability not confirmed"
         },
         # Yellow Zone: finance (VLAN 20)
         {
@@ -175,67 +175,67 @@ def get_initial_endpoints_df():
             "Device_Name": "PC3",
             "Department": "finance",
             "VLAN_ID": 20,
-            "IPv4_Address": "Unverified (192.168.20.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
             "Connected_Switch": "Switch1",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "DHCP / Static",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "IP not yet recorded from terminal"
+            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server1",
             "Department": "finance",
             "VLAN_ID": 20,
-            "IPv4_Address": "Unverified (192.168.20.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
             "Connected_Switch": "Switch1",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "Static / DHCP",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server reachability not yet confirmed"
+            "Evidence": "Server IP and reachability not confirmed"
         },
         # Pink Zone: IT (VLAN 30)
         {
             "Device_Name": "PC4",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
             "Switch_Port": "Fa0/3 (Verified on sample switch)",
-            "IP_Allocation": "DHCP / Static",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "IP not yet recorded from terminal"
+            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
         },
         {
             "Device_Name": "PC5",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "DHCP / Static",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "IP not yet recorded from terminal"
+            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server2",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "IPv4_Address": "Unverified / Not configured",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
             "Switch_Port": "Unverified",
-            "IP_Allocation": "Static / DHCP",
+            "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server reachability not yet confirmed"
+            "Evidence": "Server IP and reachability not confirmed"
         }
     ])
 
@@ -310,36 +310,35 @@ def get_initial_security_policies_df():
 def get_initial_test_checklist():
     """
     Returns verification checklist.
-    PREPOPULATES ONLY THE CONFIRMED TESTS AS 'PASS':
-      1. PC0 -> 192.168.10.1 (PASS, 4/4 received, 0% loss)
-      2. PC0 -> 192.168.20.3 (PASS, 4/4 received, 0% loss; destination believed to be PC2)
-      3. PC2 local self-ping (192.168.20.3): PASS (4/4 on 2nd attempt, local IP loopback verification)
-    ALL other tests are initialized to 'NOT TESTED'.
+    PREPOPULATES ONLY THESE TWO CONFIRMED TESTS AS 'PASS':
+      1. PC0 -> 192.168.10.1: 4/4 replies, 0% packet loss (Default Gateway).
+      2. PC0 -> 192.168.20.3: 4/4 replies, 0% packet loss (Cross-Subnet Reachability).
+    EVERY OTHER TEST IS INITIALIZED TO 'NOT TESTED'.
     """
     return [
         {
             "id": "TEST-01",
             "category": "Connectivity Testing",
-            "title": "PC0 to Default Gateway (Intra-VLAN Ping)",
+            "title": "PC0 to 192.168.10.1 (Default Gateway)",
             "description": "Ping 192.168.10.1 from PC0 command prompt to verify local default gateway reachability.",
             "cisco_cmd": "ping 192.168.10.1",
-            "expected_outcome": "4 packets transmitted, 4 received (0% loss). Reply from 192.168.10.1: bytes=32 time<1ms.",
+            "expected_outcome": "4/4 replies, 0% packet loss. Reply from 192.168.10.1: bytes=32 time<1ms.",
             "status": "PASS",
             "source": "PC0 Terminal Screenshot",
-            "timestamp": "Verified from Project Evidence",
-            "notes": "Verified PASS in Packet Tracer screenshot: Sent = 4, Received = 4, Lost = 0 (0% loss)."
+            "timestamp": "Verified from Project Screenshot",
+            "notes": "Verified PASS in Packet Tracer screenshot: 4/4 replies, 0% packet loss (Sent = 4, Received = 4, Lost = 0)."
         },
         {
             "id": "TEST-02",
             "category": "Connectivity Testing",
-            "title": "PC0 to 192.168.20.3 (Inter-Subnet Reachability)",
-            "description": "Ping 192.168.20.3 from PC0. Demonstrates reachability across subnets from 192.168.10.0/24 to 192.168.20.0/24.",
+            "title": "PC0 to 192.168.20.3 (Cross-Subnet Reachability)",
+            "description": "Ping 192.168.20.3 from PC0. Demonstrates cross-subnet reachability from 192.168.10.0/24 to 192.168.20.0/24.",
             "cisco_cmd": "ping 192.168.20.3",
-            "expected_outcome": "4 packets transmitted, 4 received (0% loss). Reply from 192.168.20.3: bytes=32.",
+            "expected_outcome": "4/4 replies, 0% packet loss. Reply from 192.168.20.3: bytes=32.",
             "status": "PASS",
             "source": "PC0 Terminal Screenshot",
-            "timestamp": "Verified from Project Evidence",
-            "notes": "Verified PASS in Packet Tracer screenshot: Sent = 4, Received = 4, Lost = 0 (0% loss). Note: Demonstrates reachability to another subnet (192.168.20.0/24), destination is believed to be PC2 based on displayed PC2 ipconfig screenshot."
+            "timestamp": "Verified from Project Screenshot",
+            "notes": "Verified PASS in Packet Tracer screenshot: 4/4 replies, 0% packet loss. Confirms cross-subnet reachability to 192.168.20.0/24 (destination IP matches PC2)."
         },
         {
             "id": "TEST-03",
@@ -348,10 +347,10 @@ def get_initial_test_checklist():
             "description": "Ping 192.168.20.3 from PC2 to test local TCP/IP stack configuration.",
             "cisco_cmd": "ping 192.168.20.3 (from PC2)",
             "expected_outcome": "Replies from 192.168.20.3 with 0% loss.",
-            "status": "PASS",
+            "status": "NOT TESTED",
             "source": "PC2 Terminal Screenshot",
-            "timestamp": "Verified from Project Evidence",
-            "notes": "Verified PASS in Packet Tracer screenshot on second attempt (4/4 packets received). NOTE: This is a local host self-ping, NOT an inter-VLAN test."
+            "timestamp": "Not Run as Verified Network Check",
+            "notes": "Self-ping test on PC2 received 4/4 on second attempt. Local interface check only; NOT an inter-VLAN test."
         },
         {
             "id": "TEST-04",
@@ -456,13 +455,17 @@ def init_session_state():
     if "vlans_df" not in st.session_state or "VLAN_Name" not in st.session_state.vlans_df.columns:
         st.session_state.vlans_df = get_initial_vlans_df()
         
-    if "endpoints_df" not in st.session_state or "IPv4_Address" not in st.session_state.endpoints_df.columns:
+    if ("endpoints_df" not in st.session_state or 
+        "IPv4_Address" not in st.session_state.endpoints_df.columns or 
+        any("192.168.10.x" in str(x) for x in st.session_state.endpoints_df.get("IPv4_Address", []))):
         st.session_state.endpoints_df = get_initial_endpoints_df()
         
     if "security_policies_df" not in st.session_state or "Protocol" not in st.session_state.security_policies_df.columns:
         st.session_state.security_policies_df = get_initial_security_policies_df()
         
-    if "test_checklist" not in st.session_state or any("source" not in t for t in st.session_state.test_checklist):
+    if ("test_checklist" not in st.session_state or 
+        any("source" not in t for t in st.session_state.test_checklist) or
+        any(t.get("id") == "TEST-03" and t.get("status") == "PASS" for t in st.session_state.test_checklist)):
         st.session_state.test_checklist = get_initial_test_checklist()
 
 def get_test_stats():
