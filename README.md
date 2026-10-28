@@ -1,165 +1,124 @@
 # NetSecure: Enterprise Network Design & Security Dashboard
 
 > **College Project:** Computer Networks & Network Security  
-> **Topology Tool:** Cisco Packet Tracer  
+> **Topology Tool:** Cisco Packet Tracer (`NetSecure.pkt`)  
 > **Dashboard Stack:** Python · Streamlit · Pandas · Matplotlib  
+> **GitHub Repository:** [https://github.com/kavya179/NetSecure](https://github.com/kavya179/NetSecure)  
 
 ---
 
-## 1. Project Background
+## 1. Project Background & Verified Topology
 
-**NetSecure** is an enterprise-grade network design and security monitoring dashboard developed as a companion to an enterprise network simulated in **Cisco Packet Tracer**. 
+**NetSecure** is an enterprise network design and security monitoring dashboard created to accompany an actual enterprise network designed in **Cisco Packet Tracer**.
 
-The network architecture implements a hierarchical **3-tier campus distribution and access model**:
-
-- **1 Cisco Catalyst 3650 Multilayer Switch (`Multilayer Switch0`)**: Serves as the distribution and core routing engine. Handles wire-speed Inter-VLAN routing via Switch Virtual Interfaces (SVIs), centralized DHCP pools, and Extended Access Control Lists (ACLs).
-- **3 Cisco Catalyst 2960 Access Switches (`Switch0`, `Switch1`, `Switch2`)**: Provide Layer 2 access connectivity to departmental endpoints and link to the core via IEEE 802.1Q trunk links.
-- **6 Workstations (`PC0` to `PC5`)**: Two PCs assigned per department.
-- **3 Department Servers (`Server0`, `Server1`, `Server2`)**: One dedicated server per department providing localized services (DNS/Web, HR Portal, Accounting Database).
-- **3 Isolated Departmental Segments (VLANs 10, 20, 30)**:
-  - **Purple Section (VLAN 10):** IT & Engineering (`Switch0`, `PC0`, `PC1`, `Server0`)
-  - **Yellow Section (VLAN 20):** Human Resources & Administration (`Switch1`, `PC2`, `PC3`, `Server1`)
-  - **Pink Section (VLAN 30):** Finance & Accounting (`Switch2`, `PC4`, `PC5`, `Server2`)
+### Physical & Logical Topology Devices
+- **1 Central Multilayer Switch:** `Multilayer Switch0` (Cisco Catalyst 3650 Core/Distribution switch).
+- **3 Access Switches:** `Switch0`, `Switch1`, and `Switch2` (Cisco Catalyst 2960).
+- **6 Workstations:** `PC0`, `PC1`, `PC2`, `PC3`, `PC4`, and `PC5`.
+- **3 Department Servers:** `Server0`, `Server1`, and `Server2`.
 
 ---
 
-## 2. Dashboard Design & Aesthetic
+## 2. Verified Network Information (From Packet Tracer Screenshots)
 
-The dashboard features a **dark navy Network Operations Center (NOC) aesthetic**:
-- **Palette:** Dark navy base (`#0B1120`, `#0F172A`), cyan (`#06B6D4`) and sky blue (`#38BDF8`) accents.
-- **Status Coding:** Green for verified successful tests, Yellow for unverified / warnings, Red for failed tests.
-- **Visual Department Matching:** Purple, Yellow, and Pink borders and badges mirroring the Packet Tracer visual layout.
-- **High Readability:** Responsive card grids, interactive data tables, copyable Cisco CLI snippets, and high-DPI vector topology diagrams.
+The following facts were verified directly from project terminal and configuration evidence:
 
----
+### A. VLAN Database
+| VLAN ID | VLAN Name | Subnet | Gateway | DNS Server | Department Zone |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **10** | `Management` | `192.168.10.0/24` | `192.168.10.1` | Assigned per pool | Purple Section |
+| **20** | `finance` | `192.168.20.0/24` | `192.168.20.1` | `8.8.8.8` | Yellow Section |
+| **30** | `IT` | `192.168.30.0/24` | `192.168.30.1` | `8.8.8.8` | Pink Section |
 
-## 3. Required Pages & Capabilities
+### B. Access Switch Interface Sample (Verified on Sample Switch)
+- `FastEthernet0/1` → Assigned to **VLAN 10** (`Management`)
+- `FastEthernet0/2` → Assigned to **VLAN 20** (`finance`)
+- `FastEthernet0/3` → Assigned to **VLAN 30** (`IT`)
+- `GigabitEthernet0/1` → **802.1Q Trunk**, Native VLAN 1, VLANs 10, 20, 30 allowed and active.
+*(Note: These port assignments were verified on the sample access switch shown in screenshots and are not assumed to apply identically across all switches).*
 
-### Page 1: Overview & System Health
-- High-level executive narrative of the network topology.
-- Real-time KPI metric cards: Departments (3), Switches (4), Endpoints (9), Active VLANs (3).
-- Verification progress bar and test outcome distribution (Passed, Untested, Failed).
-- Departmental visual zone breakdown with assigned devices and default subnets.
+### C. DHCP Configuration
+- **Excluded Addresses:** `192.168.10.1`, `192.168.20.1`, and `192.168.30.1`.
+- **Pool `Management`:** Network `192.168.10.0 255.255.255.0`, Default Gateway `192.168.10.1`.
+- **Pool `finance`:** Network `192.168.20.0 255.255.255.0`, Default Gateway `192.168.20.1`, DNS `8.8.8.8`.
+- **Pool `IT`:** Network `192.168.30.0 255.255.255.0`, Default Gateway `192.168.30.1`, DNS `8.8.8.8`.
+*(Commands observed on a device with prompt `Switch>`. Multilayer Switch0 configuration remains to be verified).*
 
-### Page 2: Network Topology
-- High-resolution dynamic diagram rendered via **Matplotlib**:
-  - Core Multilayer Switch at top with SVI gateway IPs.
-  - IEEE 802.1Q Trunk links labeled with interfaces (`Gig1/0/1`, `Gig1/0/2`, `Gig1/0/3`).
-  - Access switches in middle layer (`Switch0`, `Switch1`, `Switch2`).
-  - End-user workstations and servers grouped into their respective Purple, Yellow, and Pink zones.
-- Complete device inventory and interface mapping table.
-- CSV export for hardware inventory.
-
-### Page 3: VLAN and IP Addressing Plan
-- Interactive editable tables using `st.data_editor`:
-  - **Departmental VLAN Table:** Edit VLAN IDs, Network Addresses, Subnet Masks, Gateways, and Statuses.
-  - **Endpoint Device Matrix:** Detailed mapping of PC0-PC5 and Server0-Server2 with IP, port assignments, and gateway.
-- Subnet Address Range Calculator (computes network base, broadcast address, and usable IP range).
-- One-click CSV export for both VLAN and endpoint allocation tables.
-- Clearly labeled example data notice (academic integrity).
-
-### Page 4: Security Policy & Cisco IOS ACL Compiler
-- Security access control matrix defining source, destination, action (Permit/Deny), protocol, purpose, and verification status.
-- **Cisco IOS Extended ACL Compiler:** Automatically generates copy-pasteable Cisco Catalyst 3650 configuration commands:
-  - Department isolation (blocking HR from Finance records).
-  - Controlled server access (HTTP/HTTPS to HR Portal, SQL/HTTPS to Finance DB).
-  - IT administrative override and network DNS resolution.
-  - SVI inbound access-group bindings.
-- Downloadable `.txt` Cisco configuration script and CSV policy export.
-
-### Page 5: Validation Suite & Test Logs
-- Comprehensive verification checklist covering:
-  - `show vlan brief` (VLAN database)
-  - `show interfaces trunk` (802.1Q trunk links)
-  - `show ip interface brief` (SVI gateway interfaces)
-  - `show ip route` (Inter-VLAN routing table)
-  - `show ip dhcp binding` (DHCP address allocation)
-  - Intra-VLAN and Inter-VLAN `ping` tests
-  - ACL permit/deny verification
-  - `show port-security` (Layer 2 port security)
-- **Zero Auto-Pass Policy:** Tests must be verified in Packet Tracer before recording as Passed or Failed.
-- Interactive status recorder with timestamp and notes logging.
-- **Cisco CLI Output Inspector:** Paste terminal text to parse and extract verification proof.
-- **Cisco Commands Reference Guide:** Complete cheatsheet of configuration commands.
-- One-click CSV export of test logs.
+### D. Verified PC Configurations & Connectivity Tests
+- **`PC0` (Verified via `ipconfig`):**
+  - IPv4 Address: `192.168.10.3`
+  - Subnet Mask: `255.255.255.0`
+  - Default Gateway: `192.168.10.1`
+- **`PC0 → 192.168.10.1` (Gateway Ping):** **PASS** (4 packets sent, 4 received, 0% loss, RTT <1ms).
+- **`PC0 → 192.168.20.3` (Inter-Subnet Reachability):** **PASS** (4 packets sent, 4 received, 0% loss). Demonstrates reachability across subnets to `192.168.20.0/24`. Destination is believed to be PC2 based on displayed PC2 info.
+- **`PC2` (Verified via `ipconfig`):**
+  - IPv4 Address: `192.168.20.3`.
+  - Self-ping test (`ping 192.168.20.3` from PC2): 4/4 packets received on second attempt. Verified local stack loopback (not an inter-VLAN test).
 
 ---
 
-## 4. Cisco Packet Tracer Integration Architecture
+## 3. What Still Requires Verification in Packet Tracer
 
-- **Proprietary File Architecture:** Cisco Packet Tracer stores network states in proprietary binary `.pkt` files. There is no open-source Python library that can parse or modify `.pkt` binary formats natively without the desktop application running.
-- **External IPC Constraints:** Packet Tracer communicates externally only when configured with its Multi-User / PT-IPC socket listener.
-- **Companion Mode Design:** To maintain 100% reliability during college project demonstrations, the dashboard runs in **Manual Companion Mode**. Students execute commands directly in Packet Tracer's CLI, observe results, and record verified proof in the dashboard.
-- **Modular Extensibility:** All data structures are separated into `data_manager.py` and `cisco_helpers.py`, allowing future REST or socket API modules to plug in seamlessly.
+To preserve academic integrity, the following items are displayed as **UNVERIFIED / PENDING EVIDENCE**:
+1. **Central Multilayer Switch Routing:** Output of `show ip route` to confirm hardware IP routing and active SVIs.
+2. **Remaining Host IPs:** IP addresses for `PC1`, `PC3`, `PC4`, `PC5`, `Server0`, `Server1`, and `Server2`.
+3. **Switch Interface Assignments:** Port mappings on `Switch1` and `Switch2`.
+4. **Server Connectivity & Services:** Ping reachability and web/DNS/database services on Server0, 1, 2.
+5. **ACL Enforcement:** Empirical verification in CLI that unauthorized cross-department traffic is dropped and logged.
+
+---
+
+## 4. Key Dashboard Features & Bug Fixes
+
+- **No Fabricated Telemetry:** Displays an explicit simulation notice: *"Packet Tracer simulation is not connected directly. Results are recorded manually from real CLI outputs."*
+- **Arbitrary IPv4 Subnet Calculator:** Uses Python's standard `ipaddress` module to calculate network base, broadcast address, netmask, wildcard hostmask, usable host range, and address scope for any valid CIDR prefix (`/0` to `/32`), such as `/24`, `/26`, `/30`, `/16`. Includes graceful error validation.
+- **Dynamic Cisco IOS Extended ACL Compiler:** Generates Cisco IOS commands dynamically from active rows in the editable security policy table, rather than static hardcoded text.
+- **Matplotlib Vector Topology:** Highlights confirmed links and verified devices (`PC0: 192.168.10.3`, `PC2: 192.168.20.3`) in Green, while marking unverified connections as illustrative models.
+- **Strict Evidence Validation Suite:** Prepopulates only confirmed tests as `PASS`. All other checks default to `NOT TESTED`. Test status options are strictly `NOT TESTED`, `PASS`, or `FAIL`.
+- **Live Terminal Output Inspector:** Paste CLI output from `ipconfig`, `ping`, `show vlan brief`, or `show interfaces trunk` to extract validation proof.
 
 ---
 
 ## 5. Installation and Execution (Windows & VS Code)
 
 ### Prerequisites
-- Python 3.10 or higher installed on Windows.
-- VS Code (or PowerShell terminal).
+- Python 3.10 or higher.
+- VS Code or Windows PowerShell.
 
 ### Step 1: Open Terminal in Project Directory
-Open VS Code, press `Ctrl + ~` to open the integrated terminal, and ensure your terminal is in the project folder:
 ```powershell
-cd c:\Users\DELL\Desktop\Sem_5
+cd c:\Users\DELL\Desktop\Sem_5\NetSecure
 ```
 
-### Step 2: (Optional but Recommended) Create a Virtual Environment
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-*(If you see an ExecutionPolicy error in PowerShell, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`)*
-
-### Step 3: Install Required Dependencies
+### Step 2: Install Required Dependencies
 ```powershell
 pip install -r requirements.txt
 ```
 
-### Step 4: Run the Streamlit Dashboard
+### Step 3: Run the Streamlit Dashboard
 Execute the exact command:
 ```powershell
 python -m streamlit run app.py
 ```
 
-### Step 5: Access the Dashboard
-Streamlit will automatically open your default browser. If it doesn't open automatically, navigate to:
+### Step 4: Access the Dashboard
+Navigate in any web browser to:
 ```
 http://localhost:8501
 ```
 
 ---
 
-## 6. Troubleshooting Common Issues
+## 6. Project Defense / Viva Questions & Answers
 
-| Issue | Cause | Solution |
-| :--- | :--- | :--- |
-| `streamlit: command not found` | Streamlit not in PATH or wrong environment | Run using `python -m streamlit run app.py` |
-| `Port 8501 already in use` | A previous instance is still running | Run on a different port: `python -m streamlit run app.py --server.port 8502` |
-| `ExecutionPolicy error in PowerShell` | Windows script execution restricted | Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` |
-| Missing packages error | Dependencies not yet installed | Run `pip install -r requirements.txt` |
+1. **Why does PC0 have IP 192.168.10.3 instead of 192.168.10.2?**
+   - *Answer:* The DHCP configuration excluded `192.168.10.1` (the default gateway). Depending on lease sequence or switch management addressing (`192.168.10.2` often reserved for switch SVI management), PC0 received `.3` from the pool.
 
----
+2. **Does PC0 pinging 192.168.20.3 prove Inter-VLAN routing is active?**
+   - *Answer:* Yes! PC0 resides in subnet `192.168.10.0/24` (VLAN 10), while destination `192.168.20.3` is in subnet `192.168.20.0/24` (VLAN 20). Successfully pinging between two different subnets confirms that a Layer 3 routing entity (the default gateway on the Multilayer Switch) forwarded the packets between VLANs.
 
-## 7. College Viva & Project Defense Guide
+3. **Why is PC2 pinging 192.168.20.3 considered a self-ping and not an inter-VLAN test?**
+   - *Answer:* Because `192.168.20.3` is PC2's own IP address. A host pinging its own interface tests its local TCP/IP protocol stack and NIC driver; it does not generate outbound network traffic across the switch trunk or default gateway.
 
-During your project viva or demo, be prepared to answer these core networking questions:
-
-1. **Why use a Multilayer Switch (Catalyst 3650) instead of a Router-on-a-Stick?**
-   - *Answer:* A Multilayer Switch performs Inter-VLAN routing in hardware at wire speed using Application-Specific Integrated Circuits (ASICs), avoiding the single-link bandwidth bottleneck of a traditional router-on-a-stick topology.
-
-2. **What is an SVI (Switch Virtual Interface)?**
-   - *Answer:* An SVI is a Layer 3 logical interface associated with a specific VLAN (e.g., `interface Vlan10`). It holds an IP address that functions as the default gateway for all endpoints in that VLAN.
-
-3. **How does 802.1Q trunking work between the switches?**
-   - *Answer:* 802.1Q inserts a 4-byte VLAN tag into standard Ethernet frames across trunk links, allowing multiple VLANs (10, 20, 30) to share a single physical uplink without leaking traffic between departments.
-
-4. **Where should Extended Access Control Lists (ACLs) be applied?**
-   - *Answer:* In Cisco network design best practices, Extended ACLs should be applied as close to the traffic source as possible (inbound on the source SVI interface) to drop unauthorized packets before they consume backbone switching capacity.
-
----
-
-## 8. License & Academic Attribution
-Developed for educational demonstration in Computer Networks and Network Security courses. Free to adapt and customize for academic presentations.
+4. **Why are trunk links between the Multilayer Switch and access switches necessary?**
+   - *Answer:* Trunk links use IEEE 802.1Q encapsulation to multiplex frames from multiple VLANs (10, 20, 30) across a single physical cable by inserting a 4-byte tag containing the VLAN ID.

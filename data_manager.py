@@ -1,16 +1,24 @@
 """
 NetSecure - Data Manager and State Handler
-Handles initial data structures, session state persistence, CSV export, and validation logic.
+Centralizes network device, VLAN, IP addressing, security policies, and validation test logs.
+Accurately reflects verified facts from Cisco Packet Tracer project screenshots:
+  - Multilayer Switch0 (Cisco 3650 Core MLS)
+  - Access Switches: Switch0, Switch1, Switch2
+  - VLAN 10: Management (192.168.10.0/24, GW 192.168.10.1)
+  - VLAN 20: finance (192.168.20.0/24, GW 192.168.20.1, DNS 8.8.8.8)
+  - VLAN 30: IT (192.168.30.0/24, GW 192.168.30.1, DNS 8.8.8.8)
+  - Verified Endpoints: PC0 (192.168.10.3), PC2 (192.168.20.3)
+  - Confirmed Tests: PC0 -> 192.168.10.1 (PASS), PC0 -> 192.168.20.3 (PASS)
 """
 
 import pandas as pd
 import streamlit as st
 from datetime import datetime
 
-# Department Definitions matching Cisco Packet Tracer zones
+# Verified Department Definitions matching Cisco Packet Tracer project
 DEPARTMENTS = {
     "Purple": {
-        "name": "IT & Engineering",
+        "name": "Management",
         "vlan_id": 10,
         "color_hex": "#A855F7",
         "bg_hex": "rgba(168, 85, 247, 0.15)",
@@ -18,12 +26,15 @@ DEPARTMENTS = {
         "switch": "Switch0",
         "pcs": ["PC0", "PC1"],
         "server": "Server0",
-        "subnet_example": "192.168.10.0/24",
-        "gateway_example": "192.168.10.1",
-        "role": "Network administration, infrastructure management, and technical systems."
+        "subnet": "192.168.10.0/24",
+        "gateway": "192.168.10.1",
+        "dns": "Not specified in pool",
+        "verified_devices": ["PC0 (192.168.10.3)"],
+        "unverified_devices": ["PC1", "Server0"],
+        "role": "Administrative network management, device control, and infrastructure supervision."
     },
     "Yellow": {
-        "name": "Human Resources & Admin",
+        "name": "finance",
         "vlan_id": 20,
         "color_hex": "#EAB308",
         "bg_hex": "rgba(234, 179, 8, 0.15)",
@@ -31,12 +42,15 @@ DEPARTMENTS = {
         "switch": "Switch1",
         "pcs": ["PC2", "PC3"],
         "server": "Server1",
-        "subnet_example": "192.168.20.0/24",
-        "gateway_example": "192.168.20.1",
-        "role": "Personnel records, recruitment, employee communications, and payroll coordination."
+        "subnet": "192.168.20.0/24",
+        "gateway": "192.168.20.1",
+        "dns": "8.8.8.8",
+        "verified_devices": ["PC2 (192.168.20.3)"],
+        "unverified_devices": ["PC3", "Server1"],
+        "role": "Financial records, budget ledgers, transactions, and audit systems."
     },
     "Pink": {
-        "name": "Finance & Accounting",
+        "name": "IT",
         "vlan_id": 30,
         "color_hex": "#EC4899",
         "bg_hex": "rgba(236, 72, 153, 0.15)",
@@ -44,271 +58,420 @@ DEPARTMENTS = {
         "switch": "Switch2",
         "pcs": ["PC4", "PC5"],
         "server": "Server2",
-        "subnet_example": "192.168.30.0/24",
-        "gateway_example": "192.168.30.1",
-        "role": "Financial audits, billing, budget control, and secure transactions."
+        "subnet": "192.168.30.0/24",
+        "gateway": "192.168.30.1",
+        "dns": "8.8.8.8",
+        "verified_devices": [],
+        "unverified_devices": ["PC4", "PC5", "Server2"],
+        "role": "Internal IT technical services, helpdesk support, and system administration."
     }
 }
 
 def get_initial_vlans_df():
-    """Returns initial editable VLAN configuration DataFrame."""
+    """
+    Returns verified VLAN configuration DataFrame based on Packet Tracer configuration.
+    VLAN 10 = Management, VLAN 20 = finance, VLAN 30 = IT.
+    """
     return pd.DataFrame([
         {
-            "Department": "IT & Engineering (Purple Zone)",
+            "Department_Zone": "Purple Zone",
             "VLAN_ID": 10,
+            "VLAN_Name": "Management",
             "Network_Address": "192.168.10.0/24",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
+            "DNS_Server": "Not specified in pool",
             "Assigned_Switch": "Switch0",
-            "Assigned_Devices": "PC0, PC1, Server0",
-            "VLAN_Status": "Active (Example Config)",
-            "InterVLAN_Routing": "Enabled (SVI on MLS0)"
+            "Verified_Port_Sample": "Fa0/1 (Verified on sample switch)",
+            "Config_Status": "VERIFIED in Packet Tracer"
         },
         {
-            "Department": "HR & Admin (Yellow Zone)",
+            "Department_Zone": "Yellow Zone",
             "VLAN_ID": 20,
+            "VLAN_Name": "finance",
             "Network_Address": "192.168.20.0/24",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
+            "DNS_Server": "8.8.8.8",
             "Assigned_Switch": "Switch1",
-            "Assigned_Devices": "PC2, PC3, Server1",
-            "VLAN_Status": "Active (Example Config)",
-            "InterVLAN_Routing": "Enabled (SVI on MLS0)"
+            "Verified_Port_Sample": "Fa0/2 (Verified on sample switch)",
+            "Config_Status": "VERIFIED in Packet Tracer"
         },
         {
-            "Department": "Finance & Accounting (Pink Zone)",
+            "Department_Zone": "Pink Zone",
             "VLAN_ID": 30,
+            "VLAN_Name": "IT",
             "Network_Address": "192.168.30.0/24",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
+            "DNS_Server": "8.8.8.8",
             "Assigned_Switch": "Switch2",
-            "Assigned_Devices": "PC4, PC5, Server2",
-            "VLAN_Status": "Active (Example Config)",
-            "InterVLAN_Routing": "Enabled (SVI on MLS0)"
+            "Verified_Port_Sample": "Fa0/3 (Verified on sample switch)",
+            "Config_Status": "VERIFIED in Packet Tracer"
         }
     ])
 
 def get_initial_endpoints_df():
-    """Returns initial endpoint device IP allocation table."""
+    """
+    Returns endpoint device IP allocation table.
+    Explicitly distinguishes verified IPs (PC0, PC2) from unverified endpoints.
+    """
     return pd.DataFrame([
-        # Purple Zone
-        {"Device_Name": "PC0", "Department": "IT & Engineering", "VLAN_ID": 10, "IP_Address": "192.168.10.11", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.10.1", "Connected_Switch": "Switch0", "Switch_Port": "Fa0/1", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "PC1", "Department": "IT & Engineering", "VLAN_ID": 10, "IP_Address": "192.168.10.12", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.10.1", "Connected_Switch": "Switch0", "Switch_Port": "Fa0/2", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "Server0", "Department": "IT & Engineering", "VLAN_ID": 10, "IP_Address": "192.168.10.100", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.10.1", "Connected_Switch": "Switch0", "Switch_Port": "Fa0/10", "Config_Type": "Static (DNS/Web)", "Verification_Status": "Untested"},
-        # Yellow Zone
-        {"Device_Name": "PC2", "Department": "HR & Admin", "VLAN_ID": 20, "IP_Address": "192.168.20.11", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.20.1", "Connected_Switch": "Switch1", "Switch_Port": "Fa0/1", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "PC3", "Department": "HR & Admin", "VLAN_ID": 20, "IP_Address": "192.168.20.12", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.20.1", "Connected_Switch": "Switch1", "Switch_Port": "Fa0/2", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "Server1", "Department": "HR & Admin", "VLAN_ID": 20, "IP_Address": "192.168.20.100", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.20.1", "Connected_Switch": "Switch1", "Switch_Port": "Fa0/10", "Config_Type": "Static (HR Portal)", "Verification_Status": "Untested"},
-        # Pink Zone
-        {"Device_Name": "PC4", "Department": "Finance & Accounting", "VLAN_ID": 30, "IP_Address": "192.168.30.11", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.30.1", "Connected_Switch": "Switch2", "Switch_Port": "Fa0/1", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "PC5", "Department": "Finance & Accounting", "VLAN_ID": 30, "IP_Address": "192.168.30.12", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.30.1", "Connected_Switch": "Switch2", "Switch_Port": "Fa0/2", "Config_Type": "DHCP / Static", "Verification_Status": "Untested"},
-        {"Device_Name": "Server2", "Department": "Finance & Accounting", "VLAN_ID": 30, "IP_Address": "192.168.30.100", "Subnet_Mask": "255.255.255.0", "Gateway": "192.168.30.1", "Connected_Switch": "Switch2", "Switch_Port": "Fa0/10", "Config_Type": "Static (Accounting DB)", "Verification_Status": "Untested"},
+        # Purple Zone: Management (VLAN 10)
+        {
+            "Device_Name": "PC0",
+            "Department": "Management",
+            "VLAN_ID": 10,
+            "IPv4_Address": "192.168.10.3",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.10.1",
+            "Connected_Switch": "Switch0",
+            "Switch_Port": "Fa0/1 (Verified on sample switch)",
+            "IP_Allocation": "DHCP (Verified)",
+            "Verification_Status": "VERIFIED",
+            "Evidence": "Verified from PC0 ipconfig & ping screenshots"
+        },
+        {
+            "Device_Name": "PC1",
+            "Department": "Management",
+            "VLAN_ID": 10,
+            "IPv4_Address": "Unverified (192.168.10.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.10.1",
+            "Connected_Switch": "Switch0",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "DHCP / Static",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "IP not yet recorded from terminal"
+        },
+        {
+            "Device_Name": "Server0",
+            "Department": "Management",
+            "VLAN_ID": 10,
+            "IPv4_Address": "Unverified (192.168.10.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.10.1",
+            "Connected_Switch": "Switch0",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "Static / DHCP",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "Server reachability not yet confirmed"
+        },
+        # Yellow Zone: finance (VLAN 20)
+        {
+            "Device_Name": "PC2",
+            "Department": "finance",
+            "VLAN_ID": 20,
+            "IPv4_Address": "192.168.20.3",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.20.1",
+            "Connected_Switch": "Switch1",
+            "Switch_Port": "Fa0/2 (Verified on sample switch)",
+            "IP_Allocation": "DHCP (Verified)",
+            "Verification_Status": "VERIFIED",
+            "Evidence": "Verified from PC2 ipconfig screenshot"
+        },
+        {
+            "Device_Name": "PC3",
+            "Department": "finance",
+            "VLAN_ID": 20,
+            "IPv4_Address": "Unverified (192.168.20.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.20.1",
+            "Connected_Switch": "Switch1",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "DHCP / Static",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "IP not yet recorded from terminal"
+        },
+        {
+            "Device_Name": "Server1",
+            "Department": "finance",
+            "VLAN_ID": 20,
+            "IPv4_Address": "Unverified (192.168.20.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.20.1",
+            "Connected_Switch": "Switch1",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "Static / DHCP",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "Server reachability not yet confirmed"
+        },
+        # Pink Zone: IT (VLAN 30)
+        {
+            "Device_Name": "PC4",
+            "Department": "IT",
+            "VLAN_ID": 30,
+            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.30.1",
+            "Connected_Switch": "Switch2",
+            "Switch_Port": "Fa0/3 (Verified on sample switch)",
+            "IP_Allocation": "DHCP / Static",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "IP not yet recorded from terminal"
+        },
+        {
+            "Device_Name": "PC5",
+            "Department": "IT",
+            "VLAN_ID": 30,
+            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.30.1",
+            "Connected_Switch": "Switch2",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "DHCP / Static",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "IP not yet recorded from terminal"
+        },
+        {
+            "Device_Name": "Server2",
+            "Department": "IT",
+            "VLAN_ID": 30,
+            "IPv4_Address": "Unverified (192.168.30.x expected)",
+            "Subnet_Mask": "255.255.255.0",
+            "Default_Gateway": "192.168.30.1",
+            "Connected_Switch": "Switch2",
+            "Switch_Port": "Unverified",
+            "IP_Allocation": "Static / DHCP",
+            "Verification_Status": "UNVERIFIED",
+            "Evidence": "Server reachability not yet confirmed"
+        }
     ])
 
 def get_initial_security_policies_df():
-    """Returns initial security access control policies."""
+    """
+    Returns initial proposed security access control policies.
+    All policies are initialized to NOT TESTED.
+    """
     return pd.DataFrame([
         {
             "Rule_ID": "SEC-01",
-            "Source": "IT (VLAN 10)",
-            "Destination": "All VLANs (10, 20, 30)",
+            "Source": "Management (192.168.10.0/24)",
+            "Destination": "Any",
             "Action": "Permit",
-            "Protocol_Service": "SSH (TCP 22), HTTPS (443), ICMP",
-            "Purpose": "IT administrative management & infrastructure support across departments",
-            "Verification_Status": "Untested"
+            "Protocol": "IP",
+            "Port_Service": "Any",
+            "Purpose": "Administrative management access across all subnets",
+            "Verification_Status": "NOT TESTED"
         },
         {
             "Rule_ID": "SEC-02",
-            "Source": "HR (VLAN 20)",
-            "Destination": "Finance (VLAN 30)",
+            "Source": "finance (192.168.20.0/24)",
+            "Destination": "IT (192.168.30.0/24)",
             "Action": "Deny",
-            "Protocol_Service": "IP (All Traffic)",
-            "Purpose": "Strict departmental isolation; prevent unauthorized access to confidential ledger records",
-            "Verification_Status": "Untested"
+            "Protocol": "IP",
+            "Port_Service": "Any",
+            "Purpose": "Inter-department isolation: restrict finance traffic to IT subnet",
+            "Verification_Status": "NOT TESTED"
         },
         {
             "Rule_ID": "SEC-03",
-            "Source": "Finance (VLAN 30)",
-            "Destination": "HR (VLAN 20)",
+            "Source": "IT (192.168.30.0/24)",
+            "Destination": "finance (192.168.20.0/24)",
             "Action": "Deny",
-            "Protocol_Service": "IP (All Traffic)",
-            "Purpose": "Prevent finance users from accessing employee personnel records",
-            "Verification_Status": "Untested"
+            "Protocol": "IP",
+            "Port_Service": "Any",
+            "Purpose": "Inter-department isolation: restrict IT traffic to finance records",
+            "Verification_Status": "NOT TESTED"
         },
         {
             "Rule_ID": "SEC-04",
-            "Source": "HR (VLAN 20)",
-            "Destination": "Server1 (192.168.20.100)",
+            "Source": "finance (192.168.20.0/24)",
+            "Destination": "Server1 (192.168.20.0/24)",
             "Action": "Permit",
-            "Protocol_Service": "HTTP (TCP 80), HTTPS (443)",
-            "Purpose": "Allow HR workstations to access dedicated departmental HR web server",
-            "Verification_Status": "Untested"
+            "Protocol": "TCP",
+            "Port_Service": "80, 443",
+            "Purpose": "Permit finance workstations to access departmental web portal",
+            "Verification_Status": "NOT TESTED"
         },
         {
             "Rule_ID": "SEC-05",
-            "Source": "Finance (VLAN 30)",
-            "Destination": "Server2 (192.168.30.100)",
+            "Source": "IT (192.168.30.0/24)",
+            "Destination": "Server2 (192.168.30.0/24)",
             "Action": "Permit",
-            "Protocol_Service": "HTTPS (TCP 443), SQL (TCP 1433)",
-            "Purpose": "Permit authorized financial workstations to reach accounting database server",
-            "Verification_Status": "Untested"
+            "Protocol": "TCP",
+            "Port_Service": "80, 443",
+            "Purpose": "Permit IT workstations to access departmental IT server",
+            "Verification_Status": "NOT TESTED"
         },
         {
             "Rule_ID": "SEC-06",
             "Source": "All Endpoints",
-            "Destination": "Server0 (192.168.10.100)",
+            "Destination": "DNS Server (8.8.8.8)",
             "Action": "Permit",
-            "Protocol_Service": "DNS (UDP 53), ICMP Echo",
-            "Purpose": "Allow network-wide domain name resolution and basic network reachability check",
-            "Verification_Status": "Untested"
-        },
-        {
-            "Rule_ID": "SEC-07",
-            "Source": "Access Switch Ports",
-            "Destination": "Unregistered MACs",
-            "Action": "Deny (Shutdown)",
-            "Protocol_Service": "Ethernet Layer 2 (Port-Security)",
-            "Purpose": "Restrict unauthorized rogue laptops connecting to wall ports",
-            "Verification_Status": "Untested"
+            "Protocol": "UDP",
+            "Port_Service": "53",
+            "Purpose": "Allow domain name resolution configured in DHCP pools",
+            "Verification_Status": "NOT TESTED"
         }
     ])
 
 def get_initial_test_checklist():
-    """Returns verification checklist with real Cisco CLI validation commands."""
+    """
+    Returns verification checklist.
+    PREPOPULATES ONLY THE CONFIRMED TESTS AS 'PASS':
+      1. PC0 -> 192.168.10.1 (PASS, 4/4 received, 0% loss)
+      2. PC0 -> 192.168.20.3 (PASS, 4/4 received, 0% loss; destination believed to be PC2)
+      3. PC2 local self-ping (192.168.20.3): PASS (4/4 on 2nd attempt, local IP loopback verification)
+    ALL other tests are initialized to 'NOT TESTED'.
+    """
     return [
         {
             "id": "TEST-01",
-            "category": "VLAN Verification",
-            "title": "VLAN Database & Port Allocation",
-            "description": "Confirm VLANs 10, 20, 30 are configured on Multilayer Switch0 and access switches (Switch0, Switch1, Switch2). Verify user ports are assigned to correct access VLANs.",
-            "cisco_cmd": "show vlan brief",
-            "expected_outcome": "VLANs 10 (IT), 20 (HR), 30 (Finance) show status 'active' and associated access ports Fa0/1-Fa0/10.",
-            "status": "Not Tested",
-            "timestamp": "Not Run",
-            "notes": "Verify on Switch0, Switch1, Switch2, and Multilayer Switch0."
+            "category": "Connectivity Testing",
+            "title": "PC0 to Default Gateway (Intra-VLAN Ping)",
+            "description": "Ping 192.168.10.1 from PC0 command prompt to verify local default gateway reachability.",
+            "cisco_cmd": "ping 192.168.10.1",
+            "expected_outcome": "4 packets transmitted, 4 received (0% loss). Reply from 192.168.10.1: bytes=32 time<1ms.",
+            "status": "PASS",
+            "source": "PC0 Terminal Screenshot",
+            "timestamp": "Verified from Project Evidence",
+            "notes": "Verified PASS in Packet Tracer screenshot: Sent = 4, Received = 4, Lost = 0 (0% loss)."
         },
         {
             "id": "TEST-02",
-            "category": "Trunk Verification",
-            "title": "802.1Q Trunk Link Integrity",
-            "description": "Verify trunk connections between Multilayer Switch0 and Switch0, Switch1, Switch2. Ensure 802.1Q encapsulation is active and VLANs 10, 20, 30 are allowed across trunks.",
-            "cisco_cmd": "show interfaces trunk",
-            "expected_outcome": "Trunk interfaces (e.g. Gig1/0/1-3) mode is 'on' or 'desirable', encapsulation is '802.1q', status is 'trunking'.",
-            "status": "Not Tested",
-            "timestamp": "Not Run",
-            "notes": "Check allowed VLANs list includes 10, 20, 30."
+            "category": "Connectivity Testing",
+            "title": "PC0 to 192.168.20.3 (Inter-Subnet Reachability)",
+            "description": "Ping 192.168.20.3 from PC0. Demonstrates reachability across subnets from 192.168.10.0/24 to 192.168.20.0/24.",
+            "cisco_cmd": "ping 192.168.20.3",
+            "expected_outcome": "4 packets transmitted, 4 received (0% loss). Reply from 192.168.20.3: bytes=32.",
+            "status": "PASS",
+            "source": "PC0 Terminal Screenshot",
+            "timestamp": "Verified from Project Evidence",
+            "notes": "Verified PASS in Packet Tracer screenshot: Sent = 4, Received = 4, Lost = 0 (0% loss). Note: Demonstrates reachability to another subnet (192.168.20.0/24), destination is believed to be PC2 based on displayed PC2 ipconfig screenshot."
         },
         {
             "id": "TEST-03",
-            "category": "Gateway & SVI Verification",
-            "title": "Switch Virtual Interfaces (SVIs) Status",
-            "description": "Verify that VLAN virtual interfaces (interface Vlan10, Vlan20, Vlan30) on Multilayer Switch0 are configured with appropriate gateway IP addresses and are UP/UP.",
-            "cisco_cmd": "show ip interface brief",
-            "expected_outcome": "Vlan10, Vlan20, Vlan30 interfaces have Status 'up' and Protocol 'up' with respective .1 gateway IPs.",
-            "status": "Not Tested",
-            "timestamp": "Not Run",
-            "notes": "Ensure 'ip routing' is enabled globally on Multilayer Switch0."
+            "category": "Connectivity Testing",
+            "title": "PC2 Local Stack Self-Ping (192.168.20.3)",
+            "description": "Ping 192.168.20.3 from PC2 to test local TCP/IP stack configuration.",
+            "cisco_cmd": "ping 192.168.20.3 (from PC2)",
+            "expected_outcome": "Replies from 192.168.20.3 with 0% loss.",
+            "status": "PASS",
+            "source": "PC2 Terminal Screenshot",
+            "timestamp": "Verified from Project Evidence",
+            "notes": "Verified PASS in Packet Tracer screenshot on second attempt (4/4 packets received). NOTE: This is a local host self-ping, NOT an inter-VLAN test."
         },
         {
             "id": "TEST-04",
-            "category": "Routing Verification",
-            "title": "Inter-VLAN IP Routing Table",
-            "description": "Verify that Multilayer Switch0 has active routing enabled and directly connected routes exist for all three departmental subnets.",
-            "cisco_cmd": "show ip route",
-            "expected_outcome": "Routing table shows 'C' (connected) routes for 192.168.10.0/24, 192.168.20.0/24, and 192.168.30.0/24.",
-            "status": "Not Tested",
+            "category": "VLAN Verification",
+            "title": "VLAN Database Verification (All Switches)",
+            "description": "Confirm VLANs 10 (Management), 20 (finance), and 30 (IT) exist and are active on Multilayer Switch0 and access switches Switch0, Switch1, Switch2.",
+            "cisco_cmd": "show vlan brief",
+            "expected_outcome": "VLAN 10 Management, VLAN 20 finance, VLAN 30 IT show status 'active'.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Without 'ip routing', inter-VLAN communication will fail."
+            "notes": "Verified on sample access switch (Fa0/1->10, Fa0/2->20, Fa0/3->30). Status on Multilayer Switch0 and other switches remains unverified."
         },
         {
             "id": "TEST-05",
-            "category": "DHCP Verification",
-            "title": "DHCP Pool Binding / Address Lease",
-            "description": "Confirm workstations (PC0 through PC5) receive valid IP configuration, subnet mask, and default gateway automatically from DHCP pool or static assignment.",
-            "cisco_cmd": "show ip dhcp binding\nshow ip dhcp pool",
-            "expected_outcome": "Leased IP addresses listed under respective pools with active client MAC addresses.",
-            "status": "Not Tested",
+            "category": "Trunk Verification",
+            "title": "802.1Q Trunk Configuration & Allowed VLANs",
+            "description": "Verify 802.1Q trunking on links between Multilayer Switch0 and access switches Switch0, Switch1, Switch2.",
+            "cisco_cmd": "show interfaces trunk",
+            "expected_outcome": "Encapsulation: 802.1q, Status: trunking, Native VLAN: 1, Allowed VLANs: 10,20,30.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Verify on endpoints using 'ipconfig' in PC command prompt."
+            "notes": "Gig0/1 trunk verified on sample access switch. Trunk status on Multilayer Switch0 and other access switches remains unverified."
         },
         {
             "id": "TEST-06",
-            "category": "Connectivity Testing",
-            "title": "Default Gateway Reachability (Intra-VLAN Ping)",
-            "description": "From PC0 ping 192.168.10.1; from PC2 ping 192.168.20.1; from PC4 ping 192.168.30.1 to verify access switch to MLS gateway link.",
-            "cisco_cmd": "ping 192.168.10.1 (from PC0 command prompt)",
-            "expected_outcome": "4 packets transmitted, 4 received (Reply from 192.168.10.1: bytes=32 time<1ms TTL=255).",
-            "status": "Not Tested",
+            "category": "Gateway & Interface Verification",
+            "title": "Multilayer Switch0 SVIs UP/UP Status",
+            "description": "Verify that VLAN virtual interfaces (Vlan10, Vlan20, Vlan30) on Multilayer Switch0 are configured with gateway IPs (.1) and are UP/UP.",
+            "cisco_cmd": "show ip interface brief",
+            "expected_outcome": "Interface Vlan10 (192.168.10.1), Vlan20 (192.168.20.1), Vlan30 (192.168.30.1) show Status: up, Protocol: up.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Initial packet may ARP-timeout; subsequent 3 should reply."
+            "notes": "Central multilayer switch interface status requires confirmation in Packet Tracer."
         },
         {
             "id": "TEST-07",
-            "category": "Connectivity Testing",
-            "title": "Intra-Department PC-to-Server Reachability",
-            "description": "Test connectivity between workstations and their respective department servers (PC0 to Server0, PC2 to Server1, PC4 to Server2).",
-            "cisco_cmd": "ping 192.168.10.100\nping 192.168.20.100\nping 192.168.30.100",
-            "expected_outcome": "Successful ping replies with 0% packet loss.",
-            "status": "Not Tested",
+            "category": "Routing Verification",
+            "title": "Inter-VLAN IP Routing Table",
+            "description": "Confirm 'ip routing' is enabled and connected routes exist for 192.168.10.0/24, 192.168.20.0/24, 192.168.30.0/24.",
+            "cisco_cmd": "show ip route",
+            "expected_outcome": "Routing table displays 'C' (connected) routes for subnets 10.0/24, 20.0/24, and 30.0/24.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Verifies local Layer 2 switching within the same VLAN."
+            "notes": "Routing table on Multilayer Switch0 has not been verified from CLI output."
         },
         {
             "id": "TEST-08",
-            "category": "ACL Testing",
-            "title": "Department Isolation ACL Verification (HR to Finance Deny)",
-            "description": "Attempt to ping Finance PC4 (192.168.30.11) or Server2 (192.168.30.100) from HR PC2 (192.168.20.11). ACL rule SEC-02 should block this traffic.",
-            "cisco_cmd": "ping 192.168.30.11 (from PC2)\nshow access-lists",
-            "expected_outcome": "'Destination host unreachable' or 'Request timed out'. Packet hit counter increments on Cisco ACL.",
-            "status": "Not Tested",
+            "category": "DHCP Verification",
+            "title": "DHCP Operation Across All VLANs",
+            "description": "Confirm DHCP address leases for pools Management, finance, and IT.",
+            "cisco_cmd": "show ip dhcp binding\nshow ip dhcp pool",
+            "expected_outcome": "Active client bindings displayed for 192.168.10.0/24, 192.168.20.0/24, and 192.168.30.0/24.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Must confirm rule drops unauthorized traffic while permitted traffic flows."
+            "notes": "Pools verified in switch configuration (prompt Switch>). Operation and leases across all VLANs require verification."
         },
         {
             "id": "TEST-09",
-            "category": "ACL Testing",
-            "title": "IT Administrative Cross-VLAN Access (Permit Rule)",
-            "description": "Verify IT PC0 (192.168.10.11) can reach Server1 (192.168.20.100) and Server2 (192.168.30.100) on permitted admin services.",
-            "cisco_cmd": "ping 192.168.20.100\nshow access-lists",
-            "expected_outcome": "Ping success, confirmed by matching permit rule in show access-lists counter.",
-            "status": "Not Tested",
+            "category": "Connectivity Testing",
+            "title": "Server Reachability (Server0, Server1, Server2)",
+            "description": "Verify reachability to departmental servers from corresponding workstations.",
+            "cisco_cmd": "ping <server_ip>",
+            "expected_outcome": "Successful ping replies from Server0, Server1, and Server2.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Verifies rule SEC-01 administrative override."
+            "notes": "Server IP addresses and reachability remain unverified."
         },
         {
             "id": "TEST-10",
-            "category": "Port Security",
-            "title": "Switch Port Security Enforcement",
-            "description": "Verify port-security settings on access ports to prevent MAC spoofing and rogue device connection.",
-            "cisco_cmd": "show port-security interface fa0/1\nshow port-security address",
-            "expected_outcome": "Port Security: Enabled, Port Status: Secure-up, Violation Mode: Shutdown or Restrict.",
-            "status": "Not Tested",
+            "category": "Security / ACL Testing",
+            "title": "Department Isolation ACL Enforcement",
+            "description": "Verify that traffic from finance (VLAN 20) to IT (VLAN 30) is dropped after ACL configuration.",
+            "cisco_cmd": "ping 192.168.30.x (from PC2)\nshow access-lists",
+            "expected_outcome": "Packets denied / Request timed out. Deny hit counter increments on Multilayer Switch0 ACL.",
+            "status": "NOT TESTED",
+            "source": "Pending",
             "timestamp": "Not Run",
-            "notes": "Test on Switch0, Switch1, Switch2 access ports."
+            "notes": "ACL rules are proposed; actual enforcement in Packet Tracer has not been tested."
+        },
+        {
+            "id": "TEST-11",
+            "category": "Security / Port Security",
+            "title": "Switch Port Security Verification",
+            "description": "Verify port-security settings on access switch ports to prevent unauthorized MAC connections.",
+            "cisco_cmd": "show port-security interface fa0/1",
+            "expected_outcome": "Port Security: Enabled, Port Status: Secure-up.",
+            "status": "NOT TESTED",
+            "source": "Pending",
+            "timestamp": "Not Run",
+            "notes": "Port security configuration on access switches has not been verified."
         }
     ]
 
 def init_session_state():
-    """Initializes Streamlit session state if keys are not present."""
-    if "vlans_df" not in st.session_state:
+    """Initializes Streamlit session state and refreshes if older cached session data is present."""
+    if "vlans_df" not in st.session_state or "VLAN_Name" not in st.session_state.vlans_df.columns:
         st.session_state.vlans_df = get_initial_vlans_df()
         
-    if "endpoints_df" not in st.session_state:
+    if "endpoints_df" not in st.session_state or "IPv4_Address" not in st.session_state.endpoints_df.columns:
         st.session_state.endpoints_df = get_initial_endpoints_df()
         
-    if "security_policies_df" not in st.session_state:
+    if "security_policies_df" not in st.session_state or "Protocol" not in st.session_state.security_policies_df.columns:
         st.session_state.security_policies_df = get_initial_security_policies_df()
         
-    if "test_checklist" not in st.session_state:
+    if "test_checklist" not in st.session_state or any("source" not in t for t in st.session_state.test_checklist):
         st.session_state.test_checklist = get_initial_test_checklist()
 
 def get_test_stats():
-    """Computes summary metrics for validation tests."""
+    """Computes summary metrics for validation tests using PASS / FAIL / NOT TESTED."""
     tests = st.session_state.get("test_checklist", [])
     total = len(tests)
-    passed = sum(1 for t in tests if t["status"] == "Passed")
-    failed = sum(1 for t in tests if t["status"] == "Failed")
-    untested = sum(1 for t in tests if t["status"] in ["Not Tested", "In Progress", "Unverified"])
+    passed = sum(1 for t in tests if t.get("status") == "PASS")
+    failed = sum(1 for t in tests if t.get("status") == "FAIL")
+    untested = sum(1 for t in tests if t.get("status") in ["NOT TESTED", "Not Tested", "Pending", "Unverified"])
     return {
         "total": total,
         "passed": passed,

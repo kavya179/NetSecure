@@ -2,17 +2,23 @@
 NetSecure: Enterprise Network Design & Security Dashboard
 Cisco Packet Tracer Companion & Network Operations Center (NOC) Dashboard
 Built with Python, Streamlit, Pandas, and Matplotlib.
+Accurately mirrors verified Cisco Packet Tracer network facts without fabricated live telemetry.
 """
 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import io
 
 # Import custom modular helpers
+import importlib
 import data_manager
 import topology_graph
 import cisco_helpers
+
+# Dynamic module reload to ensure newest helper code is active
+importlib.reload(data_manager)
+importlib.reload(topology_graph)
+importlib.reload(cisco_helpers)
 
 # -----------------------------------------------------------------------------
 # STREAMLIT APP CONFIGURATION
@@ -64,7 +70,7 @@ st.markdown("""
         border: 1px solid #334155;
         border-radius: 12px;
         padding: 20px 24px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -83,10 +89,10 @@ st.markdown("""
     }
 
     .noc-subtitle {
-        font-size: 13px;
+        font-size: 12.5px;
         color: var(--cyan-accent);
         margin: 4px 0 0 0;
-        font-weight: 500;
+        font-weight: 600;
         letter-spacing: 0.5px;
     }
 
@@ -117,7 +123,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
     .metric-label {
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 600;
         color: var(--text-secondary);
         text-transform: uppercase;
@@ -138,7 +144,7 @@ st.markdown("""
 
     /* Disclaimer & Notice Banner */
     .disclaimer-banner {
-        background: rgba(15, 23, 42, 0.8);
+        background: rgba(15, 23, 42, 0.85);
         border-left: 4px solid var(--yellow-status);
         border-top: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
@@ -150,7 +156,7 @@ st.markdown("""
         color: #E2E8F0;
         display: flex;
         align-items: flex-start;
-        gap: 10px;
+        gap: 12px;
     }
 
     .disclaimer-title {
@@ -185,7 +191,7 @@ st.markdown("""
         display: inline-block;
         padding: 3px 9px;
         border-radius: 12px;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 700;
         letter-spacing: 0.3px;
     }
@@ -236,11 +242,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# SIDEBAR NAVIGATION & NOC TELEMETRY SUMMARY
+# SIDEBAR NAVIGATION & NOC STATUS
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("""
-        <div style="padding: 10px 0 20px 0; border-bottom: 1px solid #1E293B;">
+        <div style="padding: 10px 0 16px 0; border-bottom: 1px solid #1E293B;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="background: linear-gradient(135deg, #06B6D4, #3B82F6); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #0B1120;">
                     🛡️
@@ -250,23 +256,22 @@ with st.sidebar:
                     <div style="font-size: 10px; color: #06B6D4; letter-spacing: 0.8px; font-weight: 700;">NOC DASHBOARD</div>
                 </div>
             </div>
-            <div style="margin-top: 12px; font-size: 11.5px; color: #94A3B8; line-height: 1.4;">
-                Enterprise Network Design & Security Companion for Cisco Packet Tracer
+            <div style="margin-top: 10px; font-size: 11.5px; color: #94A3B8; line-height: 1.4;">
+                Cisco Packet Tracer Companion & Verification Center
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<p style='font-size: 10.5px; font-weight: 700; color: #64748B; letter-spacing: 1.2px; margin: 18px 0 8px 4px;'>NAVIGATION</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 10.5px; font-weight: 700; color: #64748B; letter-spacing: 1.2px; margin: 16px 0 6px 4px;'>PAGES</p>", unsafe_allow_html=True)
     
     pages = [
-        "📊 1. Overview & Health",
+        "📊 1. Overview & Verified Inventory",
         "🗺️ 2. Network Topology",
         "🌐 3. VLAN & IP Addressing",
-        "🔒 4. Security Policy & ACL",
+        "🔒 4. Security Policy & ACL Generator",
         "🧪 5. Validation & Test Logs"
     ]
     
-    # Check if page was set in session state
     if "current_page" not in st.session_state:
         st.session_state.current_page = pages[0]
 
@@ -280,96 +285,86 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Quick Verification Health Gauge in Sidebar
+    # Verification Health Metrics (PASS / FAIL / NOT TESTED)
     stats = data_manager.get_test_stats()
-    st.markdown("<p style='font-size: 10.5px; font-weight: 700; color: #64748B; letter-spacing: 1.2px; margin-bottom: 8px;'>TEST VERIFICATION STATUS</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 10.5px; font-weight: 700; color: #64748B; letter-spacing: 1.2px; margin-bottom: 8px;'>TEST VERIFICATION AUDIT</p>", unsafe_allow_html=True)
     
     col_sb1, col_sb2 = st.columns(2)
     with col_sb1:
         st.markdown(f"""
-            <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 10px; text-align: center;">
-                <div style="font-size: 10px; color: #10B981; font-weight: 700;">PASSED</div>
-                <div style="font-size: 18px; font-weight: 800; color: #10B981;">{stats['passed']}</div>
+            <div style="background: #111A2E; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px; text-align: center;">
+                <div style="font-size: 10px; color: #10B981; font-weight: 700;">VERIFIED PASS</div>
+                <div style="font-size: 20px; font-weight: 800; color: #10B981;">{stats['passed']}</div>
             </div>
         """, unsafe_allow_html=True)
     with col_sb2:
         st.markdown(f"""
-            <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 10px; text-align: center;">
-                <div style="font-size: 10px; color: #EF4444; font-weight: 700;">FAILED</div>
-                <div style="font-size: 18px; font-weight: 800; color: #EF4444;">{stats['failed']}</div>
+            <div style="background: #111A2E; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px; text-align: center;">
+                <div style="font-size: 10px; color: #EF4444; font-weight: 700;">FAIL</div>
+                <div style="font-size: 20px; font-weight: 800; color: #EF4444;">{stats['failed']}</div>
             </div>
         """, unsafe_allow_html=True)
 
     st.markdown(f"""
-        <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 10px; text-align: center; margin-top: 8px;">
-            <div style="font-size: 10px; color: #F59E0B; font-weight: 700;">UNTESTED / PENDING</div>
-            <div style="font-size: 18px; font-weight: 800; color: #F59E0B;">{stats['untested']} / {stats['total']}</div>
+        <div style="background: #111A2E; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 10px; text-align: center; margin-top: 8px;">
+            <div style="font-size: 10px; color: #F59E0B; font-weight: 700;">NOT TESTED / PENDING</div>
+            <div style="font-size: 20px; font-weight: 800; color: #F59E0B;">{stats['untested']} / {stats['total']}</div>
         </div>
     """, unsafe_allow_html=True)
-
-    # Packet Tracer Integration Architecture Box in Sidebar
-    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    with st.expander("ℹ️ Packet Tracer Connection Info", expanded=False):
-        st.markdown("""
-            **Integration Mode: Manual Verification**
-            
-            - **No Direct Socket**: Cisco Packet Tracer uses a proprietary desktop simulation environment without external Python API bindings by default.
-            - **Honest Data Handling**: Configuration and test outcomes are entered or validated manually from real Packet Tracer CLI execution (`show vlan`, `ping`, etc.).
-            - **Academic Integrity**: This dashboard does not invent fake real-time telemetry.
-        """)
 
     st.markdown("""
-        <div style="margin-top: 30px; padding: 12px; background: rgba(30, 41, 59, 0.4); border-radius: 8px; font-size: 11px; color: #64748B;">
-            <b>NetSecure v2.4 (Enterprise Edition)</b><br>
-            Designed for Computer Networks College Project & NOC Lab Testing.
+        <div style="margin-top: 24px; padding: 12px; background: rgba(30, 41, 59, 0.5); border-left: 3px solid #06B6D4; border-radius: 6px; font-size: 11px; color: #94A3B8; line-height: 1.4;">
+            <b>Integration Notice:</b><br>
+            Packet Tracer simulation is not connected directly. Results are recorded manually from real CLI outputs.
         </div>
     """, unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
+# GLOBAL SIMULATION NOTICE ON EVERY PAGE
+# -----------------------------------------------------------------------------
+st.markdown("""
+    <div class="disclaimer-banner">
+        <span style="font-size: 20px;">⚠️</span>
+        <div>
+            <div class="disclaimer-title">Cisco Packet Tracer Integration Notice</div>
+            Packet Tracer simulation is not connected directly. Results are recorded manually from real CLI outputs.
+            This dashboard does not invent live device statuses, fake socket streams, or fabricated test passes.
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------------------------
 # PAGE 1: OVERVIEW & SYSTEM HEALTH
 # -----------------------------------------------------------------------------
-if selected_page == "📊 1. Overview & Health":
+if selected_page == "📊 1. Overview & Verified Inventory":
     st.markdown("""
         <div class="noc-header">
             <div>
-                <h1 class="noc-title">🛡️ NetSecure: Enterprise Network Control Center</h1>
-                <p class="noc-subtitle">CENTRALIZED MONITORING & SECURITY VERIFICATION FOR CISCO PACKET TRACER</p>
+                <h1 class="noc-title">🛡️ NetSecure: Network Operations Center</h1>
+                <p class="noc-subtitle">ENTERPRISE NETWORK DESIGN & SECURITY COMPANION FOR CISCO PACKET TRACER</p>
             </div>
-            <div class="noc-badge">● Standalone Companion Mode</div>
+            <div class="noc-badge">Companion Mode</div>
         </div>
     """, unsafe_allow_html=True)
 
-    # Required Architecture Disclaimer
+    # Narrative Overview
     st.markdown("""
-        <div class="disclaimer-banner">
-            <span style="font-size: 18px;">⚠️</span>
-            <div>
-                <div class="disclaimer-title">Network Simulation Disclaimer & Presentation Scope</div>
-                This dashboard is an interactive presentation companion for your Cisco Packet Tracer project topology.
-                All IP addressing schemes, VLAN matrices, and test statuses are editable example data.
-                This software does not claim a live socket connection to Cisco Packet Tracer. All test outcomes must be verified inside the Packet Tracer CLI.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Project Narrative Overview Card
-    st.markdown("""
-        <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 17px; color: #F8FAFC;">Project Architectural Overview</h3>
-            <p style="color: #94A3B8; font-size: 13.5px; line-height: 1.6; margin: 0;">
-                The <b>NetSecure Enterprise Network</b> implements a robust, segmented campus network architecture designed in <b>Cisco Packet Tracer</b>.
-                At the core sits a <b>Cisco Catalyst 3650 Multilayer Switch</b> (<code>Multilayer Switch0</code>) providing high-speed wire-rate Inter-VLAN routing via Switch Virtual Interfaces (SVIs) and centralized Extended Access Control Lists (ACLs).
-                The access layer is comprised of three <b>Cisco Catalyst 2960 switches</b> (<code>Switch0</code>, <code>Switch1</code>, and <code>Switch2</code>) servicing three dedicated departments:
-                <b>IT & Engineering (Purple Zone)</b>, <b>HR & Administration (Yellow Zone)</b>, and <b>Finance & Accounting (Pink Zone)</b>.
-                Each department features dedicated workstations (PCs) and an isolated departmental server.
+        <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 12px; padding: 18px 22px; margin-bottom: 22px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 16.5px; color: #F8FAFC;">Verified Network Architecture</h3>
+            <p style="color: #94A3B8; font-size: 13px; line-height: 1.6; margin: 0;">
+                The <b>NetSecure Enterprise Network</b> is built in <b>Cisco Packet Tracer</b> using a hierarchical distribution and access model:
+                One central <b>Cisco 3650 Multilayer Switch</b> (<code>Multilayer Switch0</code>) connecting to three access switches:
+                <code>Switch0</code>, <code>Switch1</code>, and <code>Switch2</code>.
+                The network organizes endpoints into three visual department zones corresponding to verified VLANs:
+                <b>Management (VLAN 10)</b> in the Purple Zone, <b>finance (VLAN 20)</b> in the Yellow Zone, and <b>IT (VLAN 30)</b> in the Pink Zone.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # KPI Metric Cards Grid
+    # Metric Cards Grid
     col1, col2, col3, col4, col5 = st.columns(5)
-    
     with col1:
         st.markdown("""
             <div class="metric-card">
@@ -378,25 +373,22 @@ if selected_page == "📊 1. Overview & Health":
                 <div class="metric-sub">Purple · Yellow · Pink</div>
             </div>
         """, unsafe_allow_html=True)
-        
     with col2:
         st.markdown("""
             <div class="metric-card">
                 <div class="metric-label">Switches</div>
                 <div class="metric-value">4</div>
-                <div class="metric-sub">1 Core MLS + 3 Access</div>
+                <div class="metric-sub">1 Core MLS0 + 3 Access</div>
             </div>
         """, unsafe_allow_html=True)
-        
     with col3:
         st.markdown("""
             <div class="metric-card">
-                <div class="metric-label">End-User PCs</div>
+                <div class="metric-label">Workstations</div>
                 <div class="metric-value">6</div>
                 <div class="metric-sub">PC0 to PC5 (2 per Dept)</div>
             </div>
         """, unsafe_allow_html=True)
-        
     with col4:
         st.markdown("""
             <div class="metric-card">
@@ -405,102 +397,83 @@ if selected_page == "📊 1. Overview & Health":
                 <div class="metric-sub">Server0, 1, 2 (1 per Dept)</div>
             </div>
         """, unsafe_allow_html=True)
-        
     with col5:
         st.markdown("""
             <div class="metric-card">
-                <div class="metric-label">Active VLANs</div>
+                <div class="metric-label">Verified VLANs</div>
                 <div class="metric-value">3</div>
-                <div class="metric-sub">VLANs 10, 20, 30 Configured</div>
+                <div class="metric-sub">10 (Mgmt), 20 (fin), 30 (IT)</div>
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
 
-    # Two Column Layout: Departmental Zones Summary vs Verification Checklist Summary
-    col_left, col_right = st.columns([1.2, 1.0])
+    # Two Column Layout: Departmental Zones vs Verified vs Unverified Facts
+    col_left, col_right = st.columns([1.15, 1.0])
 
     with col_left:
-        st.markdown("""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="font-size: 16px; margin: 0; color: #FFFFFF;">Departmental Segments & Visual Zones</h3>
-                <span style="font-size: 11.5px; color: #06B6D4;">Packet Tracer Visual Mapping</span>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("### 🏢 Department Segments & Verified VLANs")
 
         for zone_color, d in data_manager.DEPARTMENTS.items():
             css_class = f"dept-card dept-card-{zone_color.lower()}"
+            verified_list = d.get("verified_devices", [])
+            verified_str = ", ".join(verified_list) if verified_list else "None yet confirmed"
+            unverified_list = d.get("unverified_devices", [])
+            unverified_str = ", ".join(unverified_list) if unverified_list else "None"
             st.markdown(f"""
                 <div class="{css_class}">
                     <div class="dept-title">
                         <span style="color: {d['color_hex']};">{zone_color} Section: {d['name']}</span>
                         <span style="font-size: 11px; color: #94A3B8; background: #0B1120; border: 1px solid #1E293B; padding: 2px 8px; border-radius: 6px;">VLAN {d['vlan_id']}</span>
                     </div>
-                    <div style="font-size: 12.5px; color: #CBD5E1; margin: 6px 0;">
-                        <b>Switch:</b> <code>{d['switch']}</code> &nbsp;|&nbsp; <b>Workstations:</b> <code>{", ".join(d['pcs'])}</code> &nbsp;|&nbsp; <b>Server:</b> <code>{d['server']}</code>
+                    <div style="font-size: 12px; color: #CBD5E1; margin: 6px 0;">
+                        <b>Assigned Switch:</b> <code>{d['switch']}</code> &nbsp;|&nbsp; <b>Subnet:</b> <code>{d['subnet']}</code> &nbsp;|&nbsp; <b>Gateway:</b> <code>{d['gateway']}</code>
                     </div>
-                    <div style="font-size: 12px; color: #94A3B8;">
-                        <b>Subnet:</b> <code>{d['subnet_example']}</code> &nbsp;|&nbsp; <b>Gateway:</b> <code>{d['gateway_example']}</code>
+                    <div style="font-size: 11.5px; color: #10B981; margin-top: 4px;">
+                        <b>Verified Devices:</b> {verified_str}
                     </div>
-                    <div style="font-size: 11.5px; color: #64748B; margin-top: 6px;">
+                    <div style="font-size: 11.5px; color: #F59E0B; margin-top: 2px;">
+                        <b>Unverified Devices:</b> {unverified_str}
+                    </div>
+                    <div style="font-size: 11px; color: #64748B; margin-top: 6px;">
                         {d['role']}
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
     with col_right:
+        st.markdown("### 📋 Evidence Audit: Verified vs. Unverified")
+
         st.markdown("""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="font-size: 16px; margin: 0; color: #FFFFFF;">Configuration Checklist KPI</h3>
-                <span style="font-size: 11.5px; color: #94A3B8;">Validation Progress</span>
+            <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+                <div style="font-size: 13px; font-weight: 700; color: #10B981; margin-bottom: 8px;">
+                    ✅ CONFIRMED FACTS (From Packet Tracer Screenshots):
+                </div>
+                <ul style="font-size: 12px; color: #CBD5E1; margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li><b>VLANs:</b> VLAN 10 (Management), VLAN 20 (finance), VLAN 30 (IT).</li>
+                    <li><b>Sample Switch Ports:</b> Fa0/1 -> VLAN 10, Fa0/2 -> VLAN 20, Fa0/3 -> VLAN 30.</li>
+                    <li><b>Sample Switch Trunk:</b> Gig0/1 trunking, 802.1Q, native VLAN 1, VLANs 10, 20, 30 allowed.</li>
+                    <li><b>DHCP Pools:</b> Management (10.0/24, GW 10.1), finance (20.0/24, GW 20.1, DNS 8.8.8.8), IT (30.0/24, GW 30.1, DNS 8.8.8.8). Excluded: .1 on all.</li>
+                    <li><b>PC0 Verified:</b> IP 192.168.10.3, Mask 255.255.255.0, Gateway 192.168.10.1.</li>
+                    <li><b>PC2 Verified:</b> IP 192.168.20.3 (local stack self-ping 4/4 verified).</li>
+                    <li><b>Confirmed Ping 1:</b> PC0 -> 192.168.10.1 (PASS, 4/4 received, 0% loss).</li>
+                    <li><b>Confirmed Ping 2:</b> PC0 -> 192.168.20.3 (PASS, 4/4 received, 0% loss; reachability to 20.0/24, believed to be PC2).</li>
+                </ul>
+            </div>
+
+            <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 12px; padding: 16px;">
+                <div style="font-size: 13px; font-weight: 700; color: #F59E0B; margin-bottom: 8px;">
+                    ⏳ UNVERIFIED ITEMS (Pending Direct CLI Confirmation):
+                </div>
+                <ul style="font-size: 12px; color: #94A3B8; margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Multilayer Switch0 routing table (<code>show ip route</code>).</li>
+                    <li>All other PC & server IPs (PC1, PC3, PC4, PC5, Server0, Server1, Server2).</li>
+                    <li>Port assignments on Switch1 and Switch2 (not assumed identical).</li>
+                    <li>Server reachability and services (HTTP/DNS/SQL).</li>
+                    <li>ACL enforcement & restriction behavior in Packet Tracer.</li>
+                </ul>
             </div>
         """, unsafe_allow_html=True)
-
-        # Verification Progress Card
-        stats = data_manager.get_test_stats()
-        st.markdown(f"""
-            <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 12px; padding: 18px; margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <span style="font-size: 13px; font-weight: 700; color: #F8FAFC;">Overall Verification Rate</span>
-                    <span style="font-size: 15px; font-weight: 800; color: #06B6D4;">{stats['pass_rate']}%</span>
-                </div>
-                <div style="background: #1E293B; border-radius: 6px; height: 10px; width: 100%; overflow: hidden; margin-bottom: 16px;">
-                    <div style="background: linear-gradient(90deg, #10B981, #06B6D4); width: {stats['pass_rate']}%; height: 100%;"></div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
-                    <div style="background: #0B1120; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 8px;">
-                        <div style="font-size: 10.5px; color: #10B981; font-weight: 700;">PASSED</div>
-                        <div style="font-size: 16px; font-weight: 800; color: #10B981;">{stats['passed']}</div>
-                    </div>
-                    <div style="background: #0B1120; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 8px;">
-                        <div style="font-size: 10.5px; color: #F59E0B; font-weight: 700;">UNTESTED</div>
-                        <div style="font-size: 16px; font-weight: 800; color: #F59E0B;">{stats['untested']}</div>
-                    </div>
-                    <div style="background: #0B1120; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px;">
-                        <div style="font-size: 10.5px; color: #EF4444; font-weight: 700;">FAILED</div>
-                        <div style="font-size: 16px; font-weight: 800; color: #EF4444;">{stats['failed']}</div>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Quick Checklist Snapshot
-        st.markdown("<p style='font-size: 12px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>RECENT TEST ITEMS</p>", unsafe_allow_html=True)
-        for t in st.session_state.test_checklist[:4]:
-            status_cls = "status-passed" if t['status'] == "Passed" else ("status-failed" if t['status'] == "Failed" else "status-untested")
-            st.markdown(f"""
-                <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 12.5px; font-weight: 700; color: #F8FAFC;">{t['title']}</div>
-                        <div style="font-size: 11px; color: #64748B;"><code>{t['cisco_cmd'].splitlines()[0]}</code></div>
-                    </div>
-                    <span class="status-pill {status_cls}">{t['status']}</span>
-                </div>
-            """, unsafe_allow_html=True)
-
-        if st.button("🚀 Open Full Validation Suite", use_container_width=True):
-            st.session_state.current_page = "🧪 5. Validation & Test Logs"
-            st.rerun()
 
 
 # -----------------------------------------------------------------------------
@@ -517,16 +490,12 @@ elif selected_page == "🗺️ 2. Network Topology":
         </div>
     """, unsafe_allow_html=True)
 
-    # Topology Disclaimer Notice
     st.markdown("""
-        <div class="disclaimer-banner">
-            <span style="font-size: 18px;">ℹ️</span>
-            <div>
-                <div class="disclaimer-title">Topology Rendering Notice</div>
-                The diagram below is dynamically generated to mirror the visible structure and department color zones of your <b>Cisco Packet Tracer</b> design:
-                <code>Multilayer Switch0 → Switch0, Switch1, Switch2 → Department PCs & Servers</code>.
-                Interface designations (e.g. Gig1/0/1, Fa0/1) represent recommended enterprise port mappings.
-            </div>
+        <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 12.5px; color: #94A3B8;">
+            <b>Topology Notice:</b> The diagram below illustrates the actual layout of your Cisco Packet Tracer project:
+            <code>Multilayer Switch0 → Switch0, Switch1, Switch2 → Department PCs & Servers</code>.
+            Verified links and devices (such as Gig0/1 trunk and PC0: 192.168.10.3, PC2: 192.168.20.3) are prominently highlighted in <b>Green</b>.
+            Connections whose exact switch ports are not yet confirmed in CLI are depicted as illustrative models with dotted links.
         </div>
     """, unsafe_allow_html=True)
 
@@ -537,23 +506,23 @@ elif selected_page == "🗺️ 2. Network Topology":
 
     st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
 
-    # Device Inventory & Link Specifications Table
+    # Detailed Device Inventory & Interface Mapping Table
     st.markdown("### 📋 Complete Device Inventory & Port Mapping")
 
     inventory_data = [
-        {"Device": "Multilayer Switch0", "Role": "Core / Distribution", "Model": "Cisco Catalyst 3650", "Zone": "Core Backbone", "Interfaces": "Gig1/0/1, Gig1/0/2, Gig1/0/3 (Trunk)", "VLANs": "10, 20, 30 (SVIs)", "IP / Gateway": "192.168.10.1, .20.1, .30.1"},
-        {"Device": "Switch0", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Purple (IT Dept)", "Interfaces": "Gig0/1 (Uplink), Fa0/1-10 (Access)", "VLANs": "VLAN 10", "IP / Gateway": "192.168.10.2 (Mgmt)"},
-        {"Device": "PC0", "Role": "Engineering Workstation", "Model": "Generic PC", "Zone": "Purple (IT Dept)", "Interfaces": "FastEthernet 0/1", "VLANs": "VLAN 10", "IP / Gateway": "192.168.10.11 / GW: .10.1"},
-        {"Device": "PC1", "Role": "DevOps Workstation", "Model": "Generic PC", "Zone": "Purple (IT Dept)", "Interfaces": "FastEthernet 0/2", "VLANs": "VLAN 10", "IP / Gateway": "192.168.10.12 / GW: .10.1"},
-        {"Device": "Server0", "Role": "Infrastructure DNS/Web", "Model": "Generic Server", "Zone": "Purple (IT Dept)", "Interfaces": "FastEthernet 0/10", "VLANs": "VLAN 10", "IP / Gateway": "192.168.10.100 / GW: .10.1"},
-        {"Device": "Switch1", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Yellow (HR Dept)", "Interfaces": "Gig0/1 (Uplink), Fa0/1-10 (Access)", "VLANs": "VLAN 20", "IP / Gateway": "192.168.20.2 (Mgmt)"},
-        {"Device": "PC2", "Role": "Recruitment Workstation", "Model": "Generic PC", "Zone": "Yellow (HR Dept)", "Interfaces": "FastEthernet 0/1", "VLANs": "VLAN 20", "IP / Gateway": "192.168.20.11 / GW: .20.1"},
-        {"Device": "PC3", "Role": "HR Generalist Workstation", "Model": "Generic PC", "Zone": "Yellow (HR Dept)", "Interfaces": "FastEthernet 0/2", "VLANs": "VLAN 20", "IP / Gateway": "192.168.20.12 / GW: .20.1"},
-        {"Device": "Server1", "Role": "HR Portal & Records", "Model": "Generic Server", "Zone": "Yellow (HR Dept)", "Interfaces": "FastEthernet 0/10", "VLANs": "VLAN 20", "IP / Gateway": "192.168.20.100 / GW: .20.1"},
-        {"Device": "Switch2", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Pink (Finance Dept)", "Interfaces": "Gig0/1 (Uplink), Fa0/1-10 (Access)", "VLANs": "VLAN 30", "IP / Gateway": "192.168.30.2 (Mgmt)"},
-        {"Device": "PC4", "Role": "Billing & Audit PC", "Model": "Generic PC", "Zone": "Pink (Finance Dept)", "Interfaces": "FastEthernet 0/1", "VLANs": "VLAN 30", "IP / Gateway": "192.168.30.11 / GW: .30.1"},
-        {"Device": "PC5", "Role": "Payroll Accounts PC", "Model": "Generic PC", "Zone": "Pink (Finance Dept)", "Interfaces": "FastEthernet 0/2", "VLANs": "VLAN 30", "IP / Gateway": "192.168.30.12 / GW: .30.1"},
-        {"Device": "Server2", "Role": "Financial Accounting DB", "Model": "Generic Server", "Zone": "Pink (Finance Dept)", "Interfaces": "FastEthernet 0/10", "VLANs": "VLAN 30", "IP / Gateway": "192.168.30.100 / GW: .30.1"}
+        {"Device": "Multilayer Switch0", "Role": "Core / Distribution", "Model": "Cisco Catalyst 3650", "Zone": "Core Backbone", "Interfaces": "Trunk uplinks to Switch0, Switch1, Switch2", "VLANs": "10, 20, 30 (SVIs)", "Verified_IP": "Gateways: 10.1, 20.1, 30.1", "Status": "VERIFIED MODEL"},
+        {"Device": "Switch0", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Purple (Management)", "Interfaces": "Gig0/1 (Verified Trunk), Fa0/1 (VLAN 10)", "VLANs": "VLAN 10", "Verified_IP": "Unverified Mgmt IP", "Status": "VERIFIED"},
+        {"Device": "PC0", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Connected to Switch0 Fa0/1)", "VLANs": "VLAN 10", "Verified_IP": "192.168.10.3 / GW: 192.168.10.1", "Status": "VERIFIED (ipconfig)"},
+        {"Device": "PC1", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 10", "Verified_IP": "Unverified (192.168.10.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "Server0", "Role": "Management Server", "Model": "Generic Server", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 10", "Verified_IP": "Unverified (192.168.10.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "Switch1", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Yellow (finance)", "Interfaces": "Uplink trunk, Fa0/2 (VLAN 20 on sample)", "VLANs": "VLAN 20", "Verified_IP": "Unverified Mgmt IP", "Status": "VERIFIED MODEL"},
+        {"Device": "PC2", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Connected to Switch1)", "VLANs": "VLAN 20", "Verified_IP": "192.168.20.3 / GW: 192.168.20.1", "Status": "VERIFIED (ipconfig)"},
+        {"Device": "PC3", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 20", "Verified_IP": "Unverified (192.168.20.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "Server1", "Role": "Finance Server", "Model": "Generic Server", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 20", "Verified_IP": "Unverified (192.168.20.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "Switch2", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Pink (IT)", "Interfaces": "Uplink trunk, Fa0/3 (VLAN 30 on sample)", "VLANs": "VLAN 30", "Verified_IP": "Unverified Mgmt IP", "Status": "VERIFIED MODEL"},
+        {"Device": "PC4", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified (192.168.30.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "PC5", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified (192.168.30.x expected)", "Status": "UNVERIFIED"},
+        {"Device": "Server2", "Role": "IT Server", "Model": "Generic Server", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified (192.168.30.x expected)", "Status": "UNVERIFIED"}
     ]
 
     inv_df = pd.DataFrame(inventory_data)
@@ -576,26 +545,15 @@ elif selected_page == "🌐 3. VLAN & IP Addressing":
         <div class="noc-header">
             <div>
                 <h1 class="noc-title">🌐 VLAN Segmentation & IP Addressing Plan</h1>
-                <p class="noc-subtitle">INTERACTIVE SUBNET MATRIX, EDITABLE GATEWAYS, AND ENDPOINT DIRECTORY</p>
+                <p class="noc-subtitle">VERIFIED SUBNET CONFIGURATIONS, ENDPOINT DIRECTORY, AND ARBITRARY CIDR CALCULATOR</p>
             </div>
             <div class="noc-badge">Editable Configuration</div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="disclaimer-banner">
-            <span style="font-size: 18px;">✏️</span>
-            <div>
-                <div class="disclaimer-title">Editable Example Data Notice</div>
-                The IP addresses, subnet masks, and default gateways below are structured example defaults based on your Packet Tracer topology.
-                You can directly edit the values in the tables below to reflect your specific college assignment configuration, then export the result to CSV.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
     # Section 1: Departmental VLANs Table
     st.markdown("### 🏢 Departmental VLAN Configuration")
-    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Double-click any cell below to modify Network Address, Subnet Mask, Gateway, or Assigned Devices.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Verified from Packet Tracer switch output: VLAN 10 = Management, VLAN 20 = finance, VLAN 30 = IT.</p>", unsafe_allow_html=True)
 
     edited_vlans = st.data_editor(
         st.session_state.vlans_df,
@@ -603,7 +561,6 @@ elif selected_page == "🌐 3. VLAN & IP Addressing":
         num_rows="dynamic",
         key="vlan_editor"
     )
-    # Update session state with edits
     st.session_state.vlans_df = edited_vlans
 
     col_vlan_down, col_vlan_reset = st.columns([1, 4])
@@ -623,8 +580,8 @@ elif selected_page == "🌐 3. VLAN & IP Addressing":
     st.markdown("---")
 
     # Section 2: Endpoint IP Allocation Matrix
-    st.markdown("### 🖥️ Endpoint IP Allocation Matrix (Workstations & Servers)")
-    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Detailed device-level IP mapping matching PC0-PC5 and Server0-Server2 in Cisco Packet Tracer.</p>", unsafe_allow_html=True)
+    st.markdown("### 🖥️ Endpoint Device Directory (Workstations & Servers)")
+    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Explicitly flags verified endpoints (PC0: 192.168.10.3, PC2: 192.168.20.3) vs unverified endpoints.</p>", unsafe_allow_html=True)
 
     edited_endpoints = st.data_editor(
         st.session_state.endpoints_df,
@@ -650,58 +607,91 @@ elif selected_page == "🌐 3. VLAN & IP Addressing":
 
     st.markdown("---")
 
-    # Section 3: Subnet Calculator Helper for College Project
-    st.markdown("### 🧮 Subnet Address Range Calculator")
-    calc_c1, calc_c2, calc_c3 = st.columns(3)
-    with calc_c1:
-        calc_vlan = st.selectbox("Select Target VLAN", ["VLAN 10 (IT)", "VLAN 20 (HR)", "VLAN 30 (Finance)"])
-    with calc_c2:
-        subnet_input = st.text_input("Network Address (CIDR)", value="192.168.10.0/24" if "10" in calc_vlan else ("192.168.20.0/24" if "20" in calc_vlan else "192.168.30.0/24"))
-    with calc_c3:
-        gw_input = st.text_input("Assigned Default Gateway (MLS SVI)", value="192.168.10.1" if "10" in calc_vlan else ("192.168.20.1" if "20" in calc_vlan else "192.168.30.1"))
+    # Section 3: Subnet Calculator Powered by Standard ipaddress Module
+    st.markdown("### 🧮 Arbitrary IPv4 Subnet Calculator (Standard Library `ipaddress`)")
+    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Calculates network address, broadcast address, netmask, wildcard mask, and usable host range for any CIDR (/0 to /32).</p>", unsafe_allow_html=True)
 
-    st.markdown(f"""
-        <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 14px; margin-top: 10px;">
-            <div style="font-size: 13px; font-weight: 700; color: #38BDF8; margin-bottom: 6px;">Subnet Technical Specs for {calc_vlan}:</div>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 12px; color: #CBD5E1;">
-                <div><b>Network Base:</b> <code>{subnet_input.split('/')[0]}</code></div>
-                <div><b>Broadcast IP:</b> <code>{subnet_input.split('.')[0]}.{subnet_input.split('.')[1]}.{subnet_input.split('.')[2]}.255</code></div>
-                <div><b>Usable Host Range:</b> <code>.2 — .254</code></div>
-                <div><b>Gateway (SVI):</b> <code>{gw_input}</code></div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    calc_c1, calc_c2 = st.columns([1.2, 2.0])
+    with calc_c1:
+        preset_choice = st.selectbox(
+            "Select Verified Preset or Custom",
+            [
+                "VLAN 10 (Management): 192.168.10.0/24",
+                "VLAN 20 (finance): 192.168.20.0/24",
+                "VLAN 30 (IT): 192.168.30.0/24",
+                "Custom Subnet (/26 Subnet Example): 10.0.0.0/26",
+                "Custom Point-to-Point (/30 Example): 172.16.1.0/30",
+                "Custom Input..."
+            ]
+        )
+        if "192.168.10.0" in preset_choice:
+            default_calc_ip = "192.168.10.0/24"
+        elif "192.168.20.0" in preset_choice:
+            default_calc_ip = "192.168.20.0/24"
+        elif "192.168.30.0" in preset_choice:
+            default_calc_ip = "192.168.30.0/24"
+        elif "10.0.0.0/26" in preset_choice:
+            default_calc_ip = "10.0.0.0/26"
+        elif "172.16.1.0/30" in preset_choice:
+            default_calc_ip = "172.16.1.0/30"
+        else:
+            default_calc_ip = "192.168.10.0/24"
+
+        user_cidr = st.text_input("Enter IPv4 Network Address with CIDR", value=default_calc_ip)
+
+    with calc_c2:
+        calc_res = cisco_helpers.calculate_subnet_details(user_cidr)
+        if not calc_res["valid"]:
+            st.error(f"⚠️ {calc_res['error']}")
+        else:
+            st.markdown(f"""
+                <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 10px; padding: 14px;">
+                    <div style="font-size: 13.5px; font-weight: 700; color: #38BDF8; margin-bottom: 8px;">
+                        Subnet Calculation Results for <code>{user_cidr}</code>:
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: #CBD5E1;">
+                        <div><b>Network Base:</b> <code>{calc_res['network_address']}</code></div>
+                        <div><b>Broadcast IP:</b> <code>{calc_res['broadcast_address']}</code></div>
+                        <div><b>Subnet Netmask:</b> <code>{calc_res['netmask']}</code></div>
+                        <div><b>Wildcard Hostmask:</b> <code>{calc_res['wildcard_mask']}</code></div>
+                        <div><b>Usable Host Range:</b> <code>{calc_res['usable_range']}</code></div>
+                        <div><b>Usable Hosts:</b> <code>{calc_res['usable_hosts']}</code> / {calc_res['total_addresses']} total</div>
+                        <div><b>CIDR Prefix:</b> <code>/{calc_res['prefixlen']}</code></div>
+                        <div><b>Address Scope:</b> <code>{calc_res['ip_type']}</code></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------------------------
 # PAGE 4: SECURITY POLICY & ACL PLANNER
 # -----------------------------------------------------------------------------
-elif selected_page == "🔒 4. Security Policy & ACL":
+elif selected_page == "🔒 4. Security Policy & ACL Generator":
     st.markdown("""
         <div class="noc-header">
             <div>
-                <h1 class="noc-title">🔒 Enterprise Security Policies & Access Control Lists</h1>
-                <p class="noc-subtitle">DEPARTMENTAL TRAFFIC ISOLATION & CISCO IOS EXTENDED ACL COMPILER</p>
+                <h1 class="noc-title">🔒 Security Policy Matrix & Cisco IOS ACL Compiler</h1>
+                <p class="noc-subtitle">DYNAMIC COMPILATION OF PROPOSED ACCESS CONTROL LISTS FOR CATALYST 3650</p>
             </div>
-            <div class="noc-badge">Access Control Engine</div>
+            <div class="noc-badge">Dynamic ACL Engine</div>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
         <div class="disclaimer-banner">
-            <span style="font-size: 18px;">🛡️</span>
+            <span style="font-size: 20px;">🛡️</span>
             <div>
-                <div class="disclaimer-title">Security Policy Distinction Notice</div>
-                The rules listed here represent <b>proposed and planned security policies</b>.
-                They must not be confused with ACLs that have already been tested and confirmed on the physical or simulated switches.
-                Use the compiler below to generate Cisco IOS commands, apply them on <code>Multilayer Switch0</code>, and verify them under the Validation page.
+                <div class="disclaimer-title">Security Policy Notice</div>
+                The rules below represent <b>proposed security policies</b>.
+                They are NOT automatically applied to Cisco Packet Tracer.
+                The script generator dynamically converts the active table rows into real Cisco IOS syntax for <code>Multilayer Switch0</code>.
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     # Section 1: Security Policies Table
     st.markdown("### 📜 Security Access Control Matrix")
-    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Specify traffic direction, permit/deny actions, target protocols, and verification status.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Edit rules below. The Cisco IOS ACL script automatically re-compiles from these exact rows.</p>", unsafe_allow_html=True)
 
     edited_sec = st.data_editor(
         st.session_state.security_policies_df,
@@ -727,12 +717,11 @@ elif selected_page == "🔒 4. Security Policy & ACL":
 
     st.markdown("---")
 
-    # Section 2: Cisco IOS Extended ACL Script Generator
-    st.markdown("### ⚙️ Cisco IOS Extended ACL Generator (Catalyst 3650)")
+    # Section 2: Dynamic Cisco IOS Extended ACL Script Generator
+    st.markdown("### ⚙️ Dynamically Compiled Cisco IOS Extended ACL Script")
     st.markdown("""
         <p style="font-size: 12.5px; color: #94A3B8;">
-            This compiler converts your defined security matrix into verified Cisco IOS Extended Access Control Lists.
-            Copy and paste this script directly into the CLI of <code>Multilayer Switch0</code>.
+            Generated directly from the rows of your active table above. Copy and paste into the CLI of <code>Multilayer Switch0</code>.
         </p>
     """, unsafe_allow_html=True)
 
@@ -758,20 +747,21 @@ elif selected_page == "🧪 5. Validation & Test Logs":
     st.markdown("""
         <div class="noc-header">
             <div>
-                <h1 class="noc-title">🧪 Network Validation Suite & Test Logs</h1>
-                <p class="noc-subtitle">VERIFICATION CHECKLIST, CISCO CLI REFERENCE, AND EVIDENCE LOGS</p>
+                <h1 class="noc-title">🧪 Network Validation Suite & Test Evidence Logs</h1>
+                <p class="noc-subtitle">STRICT MANUAL AUDIT LOGS, CONFIRMED TESTS, AND CISCO TERMINAL INSPECTOR</p>
             </div>
-            <div class="noc-badge">Zero Auto-Pass Enforcement</div>
+            <div class="noc-badge">Strict Evidence Mode</div>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
         <div class="disclaimer-banner">
-            <span style="font-size: 18px;">🔬</span>
+            <span style="font-size: 20px;">🔬</span>
             <div>
-                <div class="disclaimer-title">Strict Manual Verification Policy</div>
-                In accordance with academic testing protocols, <b>no test is ever marked as 'Passed' automatically</b>.
-                You must execute each Cisco command or ping inside Cisco Packet Tracer, observe the terminal response, and record the verified outcome below.
+                <div class="disclaimer-title">Strict Verification Protocol</div>
+                <b>No test is marked as PASS unless verified by screenshot evidence or terminal execution.</b>
+                Only confirmed tests (PC0 gateway ping, PC0 inter-subnet ping, and PC2 local self-ping) are prepopulated as PASS.
+                All other checks are initialized to <b>NOT TESTED</b>.
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -782,7 +772,7 @@ elif selected_page == "🧪 5. Validation & Test Logs":
     with c1:
         st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-label">Total Tests Defined</div>
+                <div class="metric-label">Total Test Items</div>
                 <div class="metric-value">{stats['total']}</div>
                 <div class="metric-sub">Across 8 Categories</div>
             </div>
@@ -790,15 +780,15 @@ elif selected_page == "🧪 5. Validation & Test Logs":
     with c2:
         st.markdown(f"""
             <div class="metric-card" style="border-left: 4px solid #10B981;">
-                <div class="metric-label" style="color: #10B981;">Verified Passed</div>
+                <div class="metric-label" style="color: #10B981;">Confirmed PASS</div>
                 <div class="metric-value" style="color: #10B981;">{stats['passed']}</div>
-                <div class="metric-sub">Confirmed in Packet Tracer</div>
+                <div class="metric-sub">Verified in PT Screenshots</div>
             </div>
         """, unsafe_allow_html=True)
     with c3:
         st.markdown(f"""
             <div class="metric-card" style="border-left: 4px solid #F59E0B;">
-                <div class="metric-label" style="color: #F59E0B;">Not Tested / Pending</div>
+                <div class="metric-label" style="color: #F59E0B;">NOT TESTED / PENDING</div>
                 <div class="metric-value" style="color: #F59E0B;">{stats['untested']}</div>
                 <div class="metric-sub">Awaiting CLI Execution</div>
             </div>
@@ -806,30 +796,31 @@ elif selected_page == "🧪 5. Validation & Test Logs":
     with c4:
         st.markdown(f"""
             <div class="metric-card" style="border-left: 4px solid #EF4444;">
-                <div class="metric-label" style="color: #EF4444;">Failed / Blocked</div>
+                <div class="metric-label" style="color: #EF4444;">FAIL</div>
                 <div class="metric-value" style="color: #EF4444;">{stats['failed']}</div>
-                <div class="metric-sub">Requiring Troubleshooting</div>
+                <div class="metric-sub">Requiring Fix in Topology</div>
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
 
-    # Tabs: Interactive Checklist vs Cisco CLI Output Inspector vs Cisco Commands Guide
+    # Tabs: Interactive Checklist vs CLI Inspector vs CLI References
     tab_tests, tab_inspector, tab_cli_ref = st.tabs([
-        "📋 Interactive Test Checklist & Recorder",
+        "📋 Interactive Test Checklist & Evidence Recorder",
         "🔍 Cisco CLI Output Inspector",
         "📖 Cisco Catalyst CLI Reference Guide"
     ])
 
     # TAB 1: Interactive Checklist
     with tab_tests:
-        st.markdown("### 📝 Record Verification Test Results")
+        st.markdown("### 📝 Record Verified Test Results")
         st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Update the status of each test item below after executing the corresponding command in Cisco Packet Tracer.</p>", unsafe_allow_html=True)
 
         for i, test in enumerate(st.session_state.test_checklist):
-            status_color = "#10B981" if test["status"] == "Passed" else ("#EF4444" if test["status"] == "Failed" else "#F59E0B")
+            status = test.get("status", "NOT TESTED")
+            status_color = "#10B981" if status == "PASS" else ("#EF4444" if status == "FAIL" else "#F59E0B")
             
-            with st.expander(f"**[{test['id']}] {test['title']}** — Status: **{test['status']}** ({test['category']})", expanded=(test["status"] == "Not Tested")):
+            with st.expander(f"**[{test['id']}] {test['title']}** — Status: **{status}** ({test['category']})", expanded=(status == "NOT TESTED")):
                 st.markdown(f"""
                     <div style="font-size: 13px; color: #E2E8F0; margin-bottom: 8px;">
                         <b>Objective:</b> {test['description']}
@@ -841,19 +832,21 @@ elif selected_page == "🧪 5. Validation & Test Logs":
                     st.markdown("**Cisco Verification Command:**")
                     st.code(test['cisco_cmd'], language="cisco")
                     st.markdown(f"**Expected Outcome:** `{test['expected_outcome']}`")
+                    st.markdown(f"**Evidence Source:** `{test.get('source', 'Manual Entry')}`")
                 
                 with col_t2:
                     st.markdown("**Record Test Result:**")
                     new_status = st.selectbox(
                         "Outcome",
-                        ["Not Tested", "Passed", "Failed"],
-                        index=["Not Tested", "Passed", "Failed"].index(test["status"]),
+                        ["NOT TESTED", "PASS", "FAIL"],
+                        index=["NOT TESTED", "PASS", "FAIL"].index(status) if status in ["NOT TESTED", "PASS", "FAIL"] else 0,
                         key=f"status_select_{test['id']}"
                     )
 
-                    new_notes = st.text_input(
-                        "Verification Notes / Terminal Output Snippet",
+                    new_notes = st.text_area(
+                        "Verification Notes / Terminal Output Evidence",
                         value=test.get("notes", ""),
+                        height=80,
                         key=f"notes_input_{test['id']}"
                     )
 
@@ -861,16 +854,22 @@ elif selected_page == "🧪 5. Validation & Test Logs":
                         st.session_state.test_checklist[i]["status"] = new_status
                         st.session_state.test_checklist[i]["notes"] = new_notes
                         st.session_state.test_checklist[i]["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        st.success(f"Updated {test['id']} result to {new_status}!")
+                        st.session_state.test_checklist[i]["source"] = "Manual Verification"
+                        st.success(f"Updated {test['id']} to {new_status}!")
                         st.rerun()
 
-                st.markdown(f"<div style='font-size: 11px; color: #64748B; margin-top: 6px;'>Last Updated: {test.get('timestamp', 'Never')}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 11px; color: #64748B; margin-top: 6px;'>Evidence Timestamp: {test.get('timestamp', 'Never')}</div>", unsafe_allow_html=True)
 
         st.markdown("---")
         
         # Test Log Table & Export
         st.markdown("### 📊 Test Logs Summary Table")
-        test_df = pd.DataFrame(st.session_state.test_checklist)[["id", "category", "title", "cisco_cmd", "status", "timestamp", "notes"]]
+        raw_test_df = pd.DataFrame(st.session_state.test_checklist)
+        expected_cols = ["id", "category", "title", "cisco_cmd", "status", "source", "timestamp", "notes"]
+        for c in expected_cols:
+            if c not in raw_test_df.columns:
+                raw_test_df[c] = "Manual Verification" if c == "source" else "Not Specified"
+        test_df = raw_test_df[expected_cols]
         st.dataframe(test_df, use_container_width=True, hide_index=True)
 
         col_log_down, col_log_reset = st.columns([1, 4])
@@ -883,22 +882,22 @@ elif selected_page == "🧪 5. Validation & Test Logs":
                 mime="text/csv"
             )
         with col_log_reset:
-            if st.button("⚠️ Reset All Tests to 'Not Tested'"):
+            if st.button("⚠️ Reset All Tests to Initial Evidence"):
                 st.session_state.test_checklist = data_manager.get_initial_test_checklist()
-                st.success("All test logs have been reset.")
+                st.success("Test logs reset to initial verified evidence.")
                 st.rerun()
 
     # TAB 2: Cisco CLI Output Inspector
     with tab_inspector:
-        st.markdown("### 🔍 Live CLI Output Analyzer")
+        st.markdown("### 🔍 Terminal Output Inspector")
         st.markdown("""
             <p style="font-size: 12.5px; color: #94A3B8;">
-                Paste actual terminal output copied from Cisco Packet Tracer below (or load a sample output) to automatically inspect for key verification flags.
+                Paste terminal output copied from Cisco Packet Tracer below (or load verified sample evidence) to inspect for validation proof.
             </p>
         """, unsafe_allow_html=True)
 
         sample_choice = st.selectbox(
-            "Load Sample Cisco CLI Output",
+            "Load Verified Packet Tracer Sample Output",
             ["-- Select or Paste Custom Output --"] + list(cisco_helpers.SAMPLE_CLI_OUTPUTS.keys())
         )
 
@@ -907,21 +906,20 @@ elif selected_page == "🧪 5. Validation & Test Logs":
             default_text = cisco_helpers.SAMPLE_CLI_OUTPUTS[sample_choice]
 
         user_cli_text = st.text_area(
-            "Cisco CLI Output Text",
+            "Terminal Output Text",
             value=default_text,
             height=200,
-            placeholder="Paste output from: show vlan brief, show interfaces trunk, show ip interface brief, ping..."
+            placeholder="Paste output from: ipconfig, ping, show vlan brief, show interfaces trunk..."
         )
 
-        if st.button("🔎 Analyze CLI Output"):
+        if st.button("🔎 Inspect Terminal Output"):
             analysis = cisco_helpers.parse_cisco_output(user_cli_text)
-            
             badge_color = "#10B981" if analysis["status"] == "Success" else ("#EF4444" if analysis["status"] == "Alert" else "#F59E0B")
             
             st.markdown(f"""
                 <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 8px; padding: 16px; margin-top: 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #FFFFFF;">Command Detected: <code>{analysis['detected_type']}</code></span>
+                        <span style="font-size: 13px; font-weight: 700; color: #FFFFFF;">Detected: <code>{analysis['detected_type']}</code></span>
                         <span style="background: {badge_color}22; color: {badge_color}; border: 1px solid {badge_color}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">
                             {analysis['status'].upper()}
                         </span>
@@ -933,14 +931,14 @@ elif selected_page == "🧪 5. Validation & Test Logs":
             """, unsafe_allow_html=True)
 
             if analysis["details"]:
-                st.markdown("<p style='font-size: 12px; font-weight: 700; color: #94A3B8; margin-top: 10px;'>MATCHED VERIFICATION ENTRIES:</p>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size: 12px; font-weight: 700; color: #94A3B8; margin-top: 10px;'>EXTRACTED EVIDENCE DETAILS:</p>", unsafe_allow_html=True)
                 for item in analysis["details"]:
                     st.markdown(f"- `{item}`")
 
     # TAB 3: Cisco Commands Reference Guide
     with tab_cli_ref:
         st.markdown("### 📖 Cisco Catalyst Configuration & Verification Cheatsheet")
-        st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Essential commands used for configuring and verifying the NetSecure architecture in Cisco Packet Tracer.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 12px; color: #94A3B8;'>Verified commands used for configuring and verifying the NetSecure architecture in Cisco Packet Tracer.</p>", unsafe_allow_html=True)
 
         for topic, content in cisco_helpers.CISCO_CLI_REFERENCES.items():
             with st.expander(f"📌 {topic} ({content['device']})"):

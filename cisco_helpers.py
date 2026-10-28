@@ -1,184 +1,154 @@
 """
-NetSecure - Cisco CLI & Packet Tracer Automation Helper
-Provides Cisco IOS CLI reference templates, dynamic Extended ACL generator,
-and CLI output verification parser.
+NetSecure - Cisco CLI, Subnet Calculator & Dynamic ACL Generator
+Provides:
+  - Standard IPv4 subnet calculations using python's ipaddress module (arbitrary CIDR /0 to /32)
+  - Dynamic Cisco IOS Extended ACL script compilation from user-edited security policies
+  - Accurate Cisco CLI command templates reflecting verified Packet Tracer facts
+  - CLI terminal output inspector for verification testing
 """
 
 import re
+import ipaddress
 import pandas as pd
 
-CISCO_CLI_REFERENCES = {
-    "VLAN Configuration": {
-        "device": "Multilayer Switch0 & Access Switches (Switch0, 1, 2)",
-        "commands": """! Configure Department VLANs on Switch
-Switch> enable
-Switch# configure terminal
-Switch(config)# vlan 10
-Switch(config-vlan)# name IT_Dept
-Switch(config-vlan)# exit
-
-Switch(config)# vlan 20
-Switch(config-vlan)# name HR_Dept
-Switch(config-vlan)# exit
-
-Switch(config)# vlan 30
-Switch(config-vlan)# name Finance_Dept
-Switch(config-vlan)# exit
-Switch(config)# end
-Switch# copy running-config startup-config""",
-        "verification": "show vlan brief"
-    },
-    "Trunk Link Configuration": {
-        "device": "Multilayer Switch0 & Access Switches",
-        "commands": """! On Multilayer Switch0 (Catalyst 3650):
-MLS0(config)# interface range GigabitEthernet 1/0/1 - 3
-MLS0(config-if-range)# switchport trunk encapsulation dot1q
-MLS0(config-if-range)# switchport mode trunk
-MLS0(config-if-range)# switchport trunk allowed vlan 10,20,30
-MLS0(config-if-range)# no shutdown
-MLS0(config-if-range)# exit
-
-! On Access Switches (Switch0, Switch1, Switch2 Uplink e.g. Gig0/1):
-Switch(config)# interface GigabitEthernet 0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk allowed vlan 10,20,30
-Switch(config-if)# no shutdown""",
-        "verification": "show interfaces trunk"
-    },
-    "Inter-VLAN SVIs & IP Routing": {
-        "device": "Multilayer Switch0 (Cisco 3650 Core)",
-        "commands": """! Enable Layer 3 Hardware Routing
-MLS0(config)# ip routing
-
-! SVI for VLAN 10 (IT Gateway)
-MLS0(config)# interface Vlan10
-MLS0(config-if)# ip address 192.168.10.1 255.255.255.0
-MLS0(config-if)# no shutdown
-MLS0(config-if)# exit
-
-! SVI for VLAN 20 (HR Gateway)
-MLS0(config)# interface Vlan20
-MLS0(config-if)# ip address 192.168.20.1 255.255.255.0
-MLS0(config-if)# no shutdown
-MLS0(config-if)# exit
-
-! SVI for VLAN 30 (Finance Gateway)
-MLS0(config)# interface Vlan30
-MLS0(config-if)# ip address 192.168.30.1 255.255.255.0
-MLS0(config-if)# no shutdown
-MLS0(config-if)# exit""",
-        "verification": "show ip interface brief\nshow ip route"
-    },
-    "DHCP Pool Configuration": {
-        "device": "Multilayer Switch0",
-        "commands": """! DHCP Pool for VLAN 10 (IT)
-MLS0(config)# ip dhcp excluded-address 192.168.10.1 192.168.10.10
-MLS0(config)# ip dhcp excluded-address 192.168.10.100
-MLS0(config)# ip dhcp pool POOL_VLAN10
-MLS0(dhcp-config)# network 192.168.10.0 255.255.255.0
-MLS0(dhcp-config)# default-router 192.168.10.1
-MLS0(dhcp-config)# dns-server 192.168.10.100
-MLS0(dhcp-config)# exit
-
-! DHCP Pool for VLAN 20 (HR)
-MLS0(config)# ip dhcp excluded-address 192.168.20.1 192.168.20.10
-MLS0(config)# ip dhcp excluded-address 192.168.20.100
-MLS0(config)# ip dhcp pool POOL_VLAN20
-MLS0(dhcp-config)# network 192.168.20.0 255.255.255.0
-MLS0(dhcp-config)# default-router 192.168.20.1
-MLS0(dhcp-config)# dns-server 192.168.10.100
-MLS0(dhcp-config)# exit
-
-! DHCP Pool for VLAN 30 (Finance)
-MLS0(config)# ip dhcp excluded-address 192.168.30.1 192.168.30.10
-MLS0(config)# ip dhcp excluded-address 192.168.30.100
-MLS0(config)# ip dhcp pool POOL_VLAN30
-MLS0(dhcp-config)# network 192.168.30.0 255.255.255.0
-MLS0(dhcp-config)# default-router 192.168.30.1
-MLS0(dhcp-config)# dns-server 192.168.10.100
-MLS0(dhcp-config)# exit""",
-        "verification": "show ip dhcp binding"
-    },
-    "Port Security Configuration": {
-        "device": "Access Switches (Switch0, Switch1, Switch2)",
-        "commands": """! Configure Port Security on Access Ports (e.g. Fa0/1 to Fa0/5)
-Switch(config)# interface range FastEthernet 0/1 - 5
-Switch(config-if-range)# switchport mode access
-Switch(config-if-range)# switchport port-security
-Switch(config-if-range)# switchport port-security maximum 2
-Switch(config-if-range)# switchport port-security mac-address sticky
-Switch(config-if-range)# switchport port-security violation restrict
-Switch(config-if-range)# end""",
-        "verification": "show port-security interface fa0/1"
-    }
-}
-
-SAMPLE_CLI_OUTPUTS = {
-    "show vlan brief": """VLAN Name                             Status    Ports
----- -------------------------------- --------- -------------------------------
-1    default                          active    Fa0/11, Fa0/12, Fa0/13, Fa0/14
-10   IT_Dept                          active    Fa0/1, Fa0/2, Fa0/10
-20   HR_Dept                          active    Fa0/3, Fa0/4, Fa0/5
-30   Finance_Dept                     active    Fa0/6, Fa0/7, Fa0/8
-1002 fddi-default                     active    
-1003 token-ring-default               active    
-1004 fddinet-default                  active    
-1005 trnet-default                    active    """,
-
-    "show interfaces trunk": """Port        Mode         Encapsulation  Status        Native vlan
-Gig1/0/1    on           802.1q         trunking      1
-Gig1/0/2    on           802.1q         trunking      1
-Gig1/0/3    on           802.1q         trunking      1
-
-Port        Vlans allowed on trunk
-Gig1/0/1    10,20,30
-Gig1/0/2    10,20,30
-Gig1/0/3    10,20,30
-
-Port        Vlans in spanning tree forwarding state and not pruned
-Gig1/0/1    10,20,30
-Gig1/0/2    10,20,30
-Gig1/0/3    10,20,30""",
-
-    "show ip interface brief": """Interface              IP-Address      OK? Method Status                Protocol
-FastEthernet0/1        unassigned      YES unset  up                    up
-GigabitEthernet1/0/1   unassigned      YES unset  up                    up
-GigabitEthernet1/0/2   unassigned      YES unset  up                    up
-GigabitEthernet1/0/3   unassigned      YES unset  up                    up
-Vlan10                 192.168.10.1    YES manual up                    up
-Vlan20                 192.168.20.1    YES manual up                    up
-Vlan30                 192.168.30.1    YES manual up                    up""",
-
-    "show ip route": """Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
-       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
-
-Gateway of last resort is not set
-
-C    192.168.10.0/24 is directly connected, Vlan10
-C    192.168.20.0/24 is directly connected, Vlan20
-C    192.168.30.0/24 is directly connected, Vlan30""",
-
-    "ping response": """Pinging 192.168.30.11 with 32 bytes of data:
-Reply from 192.168.30.11: bytes=32 time=2ms TTL=127
-Reply from 192.168.30.11: bytes=32 time=1ms TTL=127
-Reply from 192.168.30.11: bytes=32 time=1ms TTL=127
-Reply from 192.168.30.11: bytes=32 time=1ms TTL=127
-
-Ping statistics for 192.168.30.11:
-    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
-Approximate round trip times in milli-seconds:
-    Minimum = 1ms, Maximum = 2ms, Average = 1ms"""
-}
-
-def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.DataFrame) -> str:
+# ---------------------------------------------------------------------------
+# 1. ARBITRARY IPv4 SUBNET CALCULATOR (STANDARD ipaddress MODULE)
+# ---------------------------------------------------------------------------
+def calculate_subnet_details(cidr_input: str) -> dict:
     """
-    Translates the security policies defined in the dashboard into
-    real Cisco IOS Extended Access Control List commands for Multilayer Switch0.
+    Computes complete IPv4 subnet details for any valid CIDR prefix (/0 to /32).
+    Uses Python's standard library ipaddress module.
+    Handles invalid inputs gracefully with clear error messages.
+    """
+    result = {
+        "valid": False,
+        "input": cidr_input,
+        "network_address": "",
+        "broadcast_address": "",
+        "netmask": "",
+        "wildcard_mask": "",
+        "prefixlen": 0,
+        "total_addresses": 0,
+        "usable_hosts": 0,
+        "first_host": "",
+        "last_host": "",
+        "usable_range": "",
+        "ip_type": "",
+        "error": None
+    }
+
+    if not cidr_input or not str(cidr_input).strip():
+        result["error"] = "Subnet input is empty. Please enter an IPv4 network (e.g. 192.168.10.0/24, 10.0.0.0/26, 172.16.1.0/30)."
+        return result
+
+    raw_str = str(cidr_input).strip()
+
+    # Append /24 if only an IP without prefix was entered
+    if "/" not in raw_str:
+        raw_str += "/24"
+
+    try:
+        net = ipaddress.ip_network(raw_str, strict=False)
+    except ValueError as e:
+        result["error"] = f"Invalid IPv4 CIDR notation '{cidr_input}': {str(e)}"
+        return result
+    except Exception as e:
+        result["error"] = f"Error parsing CIDR '{cidr_input}': {str(e)}"
+        return result
+
+    result["valid"] = True
+    result["network_address"] = str(net.network_address)
+    result["netmask"] = str(net.netmask)
+    result["wildcard_mask"] = str(net.hostmask)
+    result["prefixlen"] = net.prefixlen
+    result["total_addresses"] = net.num_addresses
+    result["ip_type"] = "Private (RFC 1918)" if net.is_private else "Public Internet"
+
+    if net.prefixlen <= 30:
+        result["broadcast_address"] = str(net.broadcast_address)
+        result["usable_hosts"] = max(0, net.num_addresses - 2)
+        first_ip = net.network_address + 1
+        last_ip = net.broadcast_address - 1
+        result["first_host"] = str(first_ip)
+        result["last_host"] = str(last_ip)
+        result["usable_range"] = f"{first_ip} - {last_ip}"
+    elif net.prefixlen == 31:
+        result["broadcast_address"] = "N/A (RFC 3021 Point-to-Point)"
+        result["usable_hosts"] = 2
+        result["first_host"] = str(net.network_address)
+        result["last_host"] = str(net.broadcast_address)
+        result["usable_range"] = f"{net.network_address} - {net.broadcast_address} (Point-to-Point)"
+    else:  # /32
+        result["broadcast_address"] = "N/A (Single Host IP)"
+        result["usable_hosts"] = 1
+        result["first_host"] = str(net.network_address)
+        result["last_host"] = str(net.network_address)
+        result["usable_range"] = f"{net.network_address} (Single Host)"
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# 2. DYNAMIC CISCO EXTENDED ACL GENERATOR
+# ---------------------------------------------------------------------------
+def _parse_endpoint_to_cisco_str(raw_val: str, vlans_df: pd.DataFrame = None) -> tuple[str, str]:
+    """
+    Helper to translate a source/destination description into valid Cisco IOS ACL syntax.
+    Returns: (cisco_syntax, error_explanation)
+    """
+    if not raw_val or not str(raw_val).strip():
+        return "any", ""
+
+    val = str(raw_val).strip()
+    val_lower = val.lower()
+
+    # Case: Any / All
+    if "any" in val_lower or "all" in val_lower and "vlan" not in val_lower:
+        return "any", ""
+
+    # Case: Known department names from Packet Tracer project
+    if "management" in val_lower or "vlan 10" in val_lower or "vlan10" in val_lower:
+        return "192.168.10.0 0.0.0.255", ""
+    if "finance" in val_lower or "vlan 20" in val_lower or "vlan20" in val_lower:
+        return "192.168.20.0 0.0.0.255", ""
+    if "it" in val_lower and ("vlan" in val_lower or val_lower.strip() == "it") or "vlan 30" in val_lower or "vlan30" in val_lower:
+        return "192.168.30.0 0.0.0.255", ""
+
+    # Case: Look for explicit IP address or CIDR in the string
+    match_cidr = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2})', val)
+    if match_cidr:
+        try:
+            net = ipaddress.ip_network(match_cidr.group(0), strict=False)
+            return f"{net.network_address} {net.hostmask}", ""
+        except ValueError as e:
+            return "", f"Invalid CIDR in '{val}': {e}"
+
+    match_ip = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', val)
+    if match_ip:
+        ip_str = match_ip.group(1)
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            return f"host {ip}", ""
+        except ValueError as e:
+            return "", f"Invalid IP in '{val}': {e}"
+
+    return "", f"Could not determine valid Cisco network or host syntax from '{val}'"
+
+
+def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.DataFrame = None) -> str:
+    """
+    Dynamically compiles real Cisco IOS Extended ACL commands from the user-selected
+    rows in security_policies_df.
+    Validates source, destination, action, protocol, and port/service.
+    If a rule cannot be safely translated, includes an informative warning remark.
     """
     lines = [
         "! ===================================================================",
         "! NetSecure: Cisco Catalyst 3650 Extended Access Control Lists (ACL)",
-        "! Generated for Inter-VLAN Security & Departmental Traffic Isolation",
+        "! Dynamically Compiled from Active Dashboard Security Policy Matrix",
+        "! ===================================================================",
+        "! NOTICE: These commands represent proposed security policies.",
+        "! Packet Tracer is not connected live; apply and verify in Multilayer Switch0 CLI.",
         "! ===================================================================",
         "enable",
         "configure terminal",
@@ -186,104 +156,294 @@ def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.D
         ""
     ]
 
-    # Map VLAN info
-    vlan_subnets = {
-        10: "192.168.10.0 0.0.0.255",
-        20: "192.168.20.0 0.0.0.255",
-        30: "192.168.30.0 0.0.0.255"
-    }
+    if security_policies_df is None or len(security_policies_df) == 0:
+        lines.append("! No security policies currently defined in dashboard table.")
+        return "\n".join(lines)
 
-    # Generate ACL for VLAN 20 (HR) - Prevents unauthorized access to Finance
+    lines.append("! -------------------------------------------------------------------")
+    lines.append("! Extended Access List: NETSECURE_ENTERPRISE_ACL")
+    lines.append("! -------------------------------------------------------------------")
+    lines.append("ip access-list extended NETSECURE_ENTERPRISE_ACL")
+
+    rule_count = 0
+    for idx, row in security_policies_df.iterrows():
+        rule_id = str(row.get("Rule_ID", f"R-{idx+1}")).strip()
+        raw_src = str(row.get("Source", "any")).strip()
+        raw_dst = str(row.get("Destination", "any")).strip()
+        raw_act = str(row.get("Action", "permit")).strip().lower()
+        raw_proto = str(row.get("Protocol", "ip")).strip().lower()
+        raw_port = str(row.get("Port_Service", "any")).strip().lower()
+        purpose = str(row.get("Purpose", "")).strip()
+
+        # Validate action
+        action = "deny" if "deny" in raw_act or "block" in raw_act or "drop" in raw_act else "permit"
+
+        # Validate source & destination
+        src_cisco, src_err = _parse_endpoint_to_cisco_str(raw_src, vlans_df)
+        dst_cisco, dst_err = _parse_endpoint_to_cisco_str(raw_dst, vlans_df)
+
+        if src_err or dst_err:
+            err_msg = src_err if src_err else dst_err
+            lines.append(f" remark [WARNING] Rule {rule_id} skipped: {err_msg}")
+            continue
+
+        # Validate protocol
+        if "tcp" in raw_proto:
+            proto = "tcp"
+        elif "udp" in raw_proto:
+            proto = "udp"
+        elif "icmp" in raw_proto:
+            proto = "icmp"
+        else:
+            proto = "ip"
+
+        # Parse ports if applicable
+        port_statements = []
+        if proto in ["tcp", "udp"] and raw_port not in ["any", "all", "ip", ""]:
+            # Extract port numbers from string (e.g. "80, 443", "53", "22")
+            ports_found = re.findall(r'\b\d+\b', raw_port)
+            if ports_found:
+                for p in ports_found:
+                    port_statements.append(f"eq {p}")
+            elif "http" in raw_port:
+                port_statements.append("eq 80")
+            elif "https" in raw_port:
+                port_statements.append("eq 443")
+            elif "dns" in raw_port:
+                port_statements.append("eq 53")
+            elif "ssh" in raw_port:
+                port_statements.append("eq 22")
+            else:
+                port_statements.append("")
+        else:
+            port_statements.append("")
+
+        # Add Remark with purpose
+        if purpose:
+            lines.append(f" remark --- [{rule_id}] {purpose} ---")
+
+        # Generate command lines
+        for port_clause in port_statements:
+            cmd = f" {action} {proto} {src_cisco} {dst_cisco}"
+            if port_clause:
+                cmd += f" {port_clause}"
+            if action == "deny" and proto == "ip":
+                cmd += " log"
+            lines.append(cmd)
+            rule_count += 1
+
     lines.extend([
-        "! -------------------------------------------------------------------",
-        "! ACL for VLAN 20 (HR & Administration Subnet) - Inbound Filtering",
-        "! Prevents unauthorized access to Finance (VLAN 30) while allowing local traffic",
-        "! -------------------------------------------------------------------",
-        "ip access-list extended ACL_VLAN20_IN",
-        " remark --- Permit intra-departmental local traffic ---",
-        " permit ip 192.168.20.0 0.0.0.255 192.168.20.0 0.0.0.255",
-        " remark --- Permit HR access to Server1 (Web/Portal) ---",
-        " permit tcp 192.168.20.0 0.0.0.255 host 192.168.20.100 eq 80",
-        " permit tcp 192.168.20.0 0.0.0.255 host 192.168.20.100 eq 443",
-        " remark --- Permit DNS resolution to Server0 in IT zone ---",
-        " permit udp 192.168.20.0 0.0.0.255 host 192.168.10.100 eq 53",
-        " remark --- SEC-02: Strict Department Isolation: Block HR -> Finance ---",
-        " deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255 log",
-        " remark --- Permit outbound internet/general traffic ---",
-        " permit ip 192.168.20.0 0.0.0.255 any",
+        " remark --- Default implicit catch-all permit for outbound connectivity ---",
+        " permit ip any any",
         "exit",
-        ""
-    ])
-
-    # Generate ACL for VLAN 30 (Finance) - Prevents access to HR records
-    lines.extend([
+        "",
         "! -------------------------------------------------------------------",
-        "! ACL for VLAN 30 (Finance & Accounting Subnet) - Inbound Filtering",
-        "! Restricts Finance traffic from HR (VLAN 20) and protects Server2 DB",
+        "! Inbound Interface Binding Commands (Apply on Multilayer Switch0 SVIs)",
         "! -------------------------------------------------------------------",
-        "ip access-list extended ACL_VLAN30_IN",
-        " remark --- Permit intra-departmental local traffic ---",
-        " permit ip 192.168.30.0 0.0.0.255 192.168.30.0 0.0.0.255",
-        " remark --- Permit Finance workstations to reach Server2 (DB/Accounting) ---",
-        " permit tcp 192.168.30.0 0.0.0.255 host 192.168.30.100 eq 443",
-        " permit tcp 192.168.30.0 0.0.0.255 host 192.168.30.100 eq 1433",
-        " remark --- Permit DNS resolution to Server0 ---",
-        " permit udp 192.168.30.0 0.0.0.255 host 192.168.10.100 eq 53",
-        " remark --- SEC-03: Strict Department Isolation: Block Finance -> HR ---",
-        " deny ip 192.168.30.0 0.0.0.255 192.168.20.0 0.0.0.255 log",
-        " remark --- Permit general authorized traffic ---",
-        " permit ip 192.168.30.0 0.0.0.255 any",
-        "exit",
-        ""
-    ])
-
-    # Generate ACL for VLAN 10 (IT Management)
-    lines.extend([
-        "! -------------------------------------------------------------------",
-        "! ACL for VLAN 10 (IT & Engineering Subnet) - Administrative Override",
-        "! IT retains full administrative diagnostics & management access",
-        "! -------------------------------------------------------------------",
-        "ip access-list extended ACL_VLAN10_IN",
-        " remark --- SEC-01: IT Full Admin Access & Diagnostics ---",
-        " permit ip 192.168.10.0 0.0.0.255 any",
-        "exit",
-        ""
-    ])
-
-    # Apply ACLs to SVIs
-    lines.extend([
-        "! -------------------------------------------------------------------",
-        "! Apply Inbound ACLs to SVI Virtual Interfaces on Multilayer Switch0",
-        "! -------------------------------------------------------------------",
+        "! Apply to VLAN 10 (Management Gateway):",
         "interface Vlan10",
-        " ip access-group ACL_VLAN10_IN in",
+        " ip access-group NETSECURE_ENTERPRISE_ACL in",
         "exit",
         "",
+        "! Apply to VLAN 20 (finance Gateway):",
         "interface Vlan20",
-        " ip access-group ACL_VLAN20_IN in",
+        " ip access-group NETSECURE_ENTERPRISE_ACL in",
         "exit",
         "",
+        "! Apply to VLAN 30 (IT Gateway):",
         "interface Vlan30",
-        " ip access-group ACL_VLAN30_IN in",
+        " ip access-group NETSECURE_ENTERPRISE_ACL in",
         "exit",
         "",
         "end",
-        "! Verify active rules and packet drop/permit hit counters:",
+        "! Verification CLI Commands:",
         "show access-lists",
         "copy running-config startup-config"
     ])
 
     return "\n".join(lines)
 
-def parse_cisco_output(raw_text: str):
+
+# ---------------------------------------------------------------------------
+# 3. VERIFIED CISCO CLI REFERENCES & TEMPLATES
+# ---------------------------------------------------------------------------
+CISCO_CLI_REFERENCES = {
+    "Verified VLAN Configuration": {
+        "device": "Multilayer Switch0 & Access Switches (Switch0, 1, 2)",
+        "commands": """! Configure Verified Department VLANs
+Switch> enable
+Switch# configure terminal
+Switch(config)# vlan 10
+Switch(config-vlan)# name Management
+Switch(config-vlan)# exit
+
+Switch(config)# vlan 20
+Switch(config-vlan)# name finance
+Switch(config-vlan)# exit
+
+Switch(config)# vlan 30
+Switch(config-vlan)# name IT
+Switch(config-vlan)# exit
+Switch(config)# end
+Switch# copy running-config startup-config""",
+        "verification": "show vlan brief"
+    },
+    "Verified Access Switch Trunk Link": {
+        "device": "Verified Access Switch (Prompt: Switch>)",
+        "commands": """! Trunking configuration verified on sample access switch:
+Switch> enable
+Switch# configure terminal
+Switch(config)# interface GigabitEthernet 0/1
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# switchport trunk encapsulation dot1q
+Switch(config-if)# switchport trunk native vlan 1
+Switch(config-if)# switchport trunk allowed vlan 10,20,30
+Switch(config-if)# no shutdown
+Switch(config-if)# end""",
+        "verification": "show interfaces trunk"
+    },
+    "Verified DHCP Pools Configuration": {
+        "device": "Switch (Prompt was Switch> in screenshot; verify on Multilayer Switch0)",
+        "commands": """! Verified DHCP Excluded Addresses:
+Switch(config)# ip dhcp excluded-address 192.168.10.1
+Switch(config)# ip dhcp excluded-address 192.168.20.1
+Switch(config)# ip dhcp excluded-address 192.168.30.1
+
+! Verified Pool: Management (VLAN 10)
+Switch(config)# ip dhcp pool Management
+Switch(dhcp-config)# network 192.168.10.0 255.255.255.0
+Switch(dhcp-config)# default-router 192.168.10.1
+Switch(dhcp-config)# exit
+
+! Verified Pool: finance (VLAN 20)
+Switch(config)# ip dhcp pool finance
+Switch(dhcp-config)# network 192.168.20.0 255.255.255.0
+Switch(dhcp-config)# default-router 192.168.20.1
+Switch(dhcp-config)# dns-server 8.8.8.8
+Switch(dhcp-config)# exit
+
+! Verified Pool: IT (VLAN 30)
+Switch(config)# ip dhcp pool IT
+Switch(dhcp-config)# network 192.168.30.0 255.255.255.0
+Switch(dhcp-config)# default-router 192.168.30.1
+Switch(dhcp-config)# dns-server 8.8.8.8
+Switch(dhcp-config)# exit""",
+        "verification": "show ip dhcp binding\nshow ip dhcp pool"
+    },
+    "Multilayer Switch0 SVIs & Inter-VLAN Routing": {
+        "device": "Multilayer Switch0 (Cisco Catalyst 3650 Core)",
+        "commands": """! Enable Layer 3 Routing (Unverified on MLS0 until confirmed)
+MLS0(config)# ip routing
+
+! SVI for VLAN 10 (Management Gateway)
+MLS0(config)# interface Vlan10
+MLS0(config-if)# ip address 192.168.10.1 255.255.255.0
+MLS0(config-if)# no shutdown
+MLS0(config-if)# exit
+
+! SVI for VLAN 20 (finance Gateway)
+MLS0(config)# interface Vlan20
+MLS0(config-if)# ip address 192.168.20.1 255.255.255.0
+MLS0(config-if)# no shutdown
+MLS0(config-if)# exit
+
+! SVI for VLAN 30 (IT Gateway)
+MLS0(config)# interface Vlan30
+MLS0(config-if)# ip address 192.168.30.1 255.255.255.0
+MLS0(config-if)# no shutdown
+MLS0(config-if)# exit""",
+        "verification": "show ip interface brief\nshow ip route"
+    }
+}
+
+SAMPLE_CLI_OUTPUTS = {
+    "PC0 ipconfig & ping 192.168.10.1 (PASS)": """PC>ipconfig
+
+FastEthernet0 Connection:(default port)
+
+   Link-local IPv6 Address.........: FE80::201:64FF:FEA2:4E01
+   IP Address......................: 192.168.10.3
+   Subnet Mask.....................: 255.255.255.0
+   Default Gateway.................: 192.168.10.1
+
+PC>ping 192.168.10.1
+
+Pinging 192.168.10.1 with 32 bytes of data:
+
+Reply from 192.168.10.1: bytes=32 time<1ms TTL=255
+Reply from 192.168.10.1: bytes=32 time<1ms TTL=255
+Reply from 192.168.10.1: bytes=32 time<1ms TTL=255
+Reply from 192.168.10.1: bytes=32 time<1ms TTL=255
+
+Ping statistics for 192.168.10.1:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms""",
+
+    "PC0 ping 192.168.20.3 (PASS)": """PC>ping 192.168.20.3
+
+Pinging 192.168.20.3 with 32 bytes of data:
+
+Reply from 192.168.20.3: bytes=32 time=1ms TTL=127
+Reply from 192.168.20.3: bytes=32 time=1ms TTL=127
+Reply from 192.168.20.3: bytes=32 time=1ms TTL=127
+Reply from 192.168.20.3: bytes=32 time=1ms TTL=127
+
+Ping statistics for 192.168.20.3:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 1ms, Maximum = 1ms, Average = 1ms""",
+
+    "PC2 Self-Ping (192.168.20.3 Local Stack)": """PC>ping 192.168.20.3
+
+Pinging 192.168.20.3 with 32 bytes of data:
+
+Reply from 192.168.20.3: bytes=32 time<1ms TTL=128
+Reply from 192.168.20.3: bytes=32 time<1ms TTL=128
+Reply from 192.168.20.3: bytes=32 time<1ms TTL=128
+Reply from 192.168.20.3: bytes=32 time<1ms TTL=128
+
+Ping statistics for 192.168.20.3:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 0ms, Maximum = 0ms, Average = 0ms""",
+
+    "show vlan brief (Verified Access Switch)": """VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/4, Fa0/5, Fa0/6, Fa0/7
+10   Management                       active    Fa0/1
+20   finance                          active    Fa0/2
+30   IT                               active    Fa0/3
+1002 fddi-default                     active    
+1003 token-ring-default               active    
+1004 fddinet-default                  active    
+1005 trnet-default                    active    """,
+
+    "show interfaces trunk (Verified Access Switch)": """Port        Mode         Encapsulation  Status        Native vlan
+Gig0/1      on           802.1q         trunking      1
+
+Port        Vlans allowed on trunk
+Gig0/1      10,20,30
+
+Port        Vlans allowed and active in management domain
+Gig0/1      10,20,30
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Gig0/1      10,20,30"""
+}
+
+
+# ---------------------------------------------------------------------------
+# 4. CLI TERMINAL OUTPUT PARSER
+# ---------------------------------------------------------------------------
+def parse_cisco_output(raw_text: str) -> dict:
     """
-    Parses pasted Cisco CLI output text to extract structured verification insights.
-    Detects VLAN states, trunk ports, SVI IP statuses, ping results, etc.
+    Parses pasted terminal output from Packet Tracer CLI to extract structured evidence.
     """
     results = {
-        "detected_type": "Unknown",
+        "detected_type": "Unknown Terminal Output",
         "status": "Neutral",
-        "summary": "Could not identify standard Cisco command output format.",
+        "summary": "Could not identify standard Cisco command format.",
         "details": []
     }
 
@@ -292,56 +452,49 @@ def parse_cisco_output(raw_text: str):
 
     text = raw_text.strip()
 
-    # Case 1: show vlan brief
-    if "VLAN Name" in text or ("10" in text and "active" in text):
-        results["detected_type"] = "show vlan brief"
+    # Case 1: ipconfig
+    if "Link-local IPv6" in text or "IP Address" in text and "Subnet Mask" in text:
+        results["detected_type"] = "PC Terminal: ipconfig"
+        results["status"] = "Success"
+        ips = re.findall(r'IP Address[.\s]+:\s*([0-9.]+)', text)
+        gws = re.findall(r'Default Gateway[.\s]+:\s*([0-9.]+)', text)
+        ip_str = ips[0] if ips else "Unknown"
+        gw_str = gws[0] if gws else "Unknown"
+        results["summary"] = f"PC Configuration Detected: IPv4 {ip_str}, Gateway {gw_str}."
+        results["details"] = [f"Client IP: {ip_str}", f"Default Gateway: {gw_str}"]
+
+    # Case 2: ping
+    elif "Pinging" in text or "Reply from" in text or "Packets: Sent" in text:
+        results["detected_type"] = "Ping Connectivity Test"
+        if "0% loss" in text or "Lost = 0" in text:
+            results["status"] = "Success"
+            target_match = re.search(r'Pinging\s+([0-9.]+)', text)
+            target = target_match.group(1) if target_match else "Destination"
+            results["summary"] = f"Ping to {target} VERIFIED SUCCESSFUL (0% packet loss)."
+            results["details"] = [line.strip() for line in text.splitlines() if "Reply from" in line or "Packets:" in line]
+        elif "100% loss" in text or "Request timed out" in text or "unreachable" in text:
+            results["status"] = "Alert"
+            results["summary"] = "Ping DROPPED or UNREACHABLE (Packet loss observed)."
+            results["details"] = [line.strip() for line in text.splitlines() if "timed out" in line or "unreachable" in line or "Packets:" in line]
+
+    # Case 3: show vlan brief
+    elif "VLAN Name" in text or ("10" in text and "active" in text and "Management" in text):
+        results["detected_type"] = "Cisco IOS: show vlan brief"
         vlans_found = []
         for line in text.splitlines():
             m = re.match(r"^(\d+)\s+([A-Za-z0-9_\-]+)\s+(active|act/unsup)", line.strip())
             if m:
-                vlans_found.append(f"VLAN {m.group(1)} ({m.group(2)}) - {m.group(3)}")
-        if vlans_found:
-            results["status"] = "Success"
-            results["summary"] = f"Detected {len(vlans_found)} active VLAN database entries."
-            results["details"] = vlans_found
-        else:
-            results["status"] = "Warning"
-            results["summary"] = "VLAN header detected, but no standard numbered VLAN lines matched."
+                vlans_found.append(f"VLAN {m.group(1)} ({m.group(2)}): Status = {m.group(3)}")
+        results["status"] = "Success"
+        results["summary"] = f"VLAN Database Detected with {len(vlans_found)} VLAN entries."
+        results["details"] = vlans_found
 
-    # Case 2: show interfaces trunk
+    # Case 4: show interfaces trunk
     elif "Port" in text and ("trunking" in text or "802.1q" in text):
-        results["detected_type"] = "show interfaces trunk"
-        trunks_found = []
-        for line in text.splitlines():
-            if "trunking" in line:
-                trunks_found.append(line.strip())
+        results["detected_type"] = "Cisco IOS: show interfaces trunk"
+        trunks = [line.strip() for line in text.splitlines() if "trunking" in line]
         results["status"] = "Success"
-        results["summary"] = f"Detected {len(trunks_found)} active 802.1Q trunking port(s)."
-        results["details"] = trunks_found
-
-    # Case 3: show ip interface brief
-    elif "IP-Address" in text and ("Vlan" in text or "FastEthernet" in text or "GigabitEthernet" in text):
-        results["detected_type"] = "show ip interface brief"
-        up_interfaces = []
-        for line in text.splitlines():
-            if "up" in line and not line.startswith("Interface"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    up_interfaces.append(f"{parts[0]}: IP {parts[1]} (Status: UP / Protocol: UP)")
-        results["status"] = "Success"
-        results["summary"] = f"Detected {len(up_interfaces)} interface(s) in UP status."
-        results["details"] = up_interfaces
-
-    # Case 4: ping response
-    elif "bytes=" in text or "Reply from" in text or "Packets: Sent" in text or "Destination host unreachable" in text:
-        results["detected_type"] = "ping result"
-        if "0% loss" in text or "bytes=32" in text:
-            results["status"] = "Success"
-            results["summary"] = "Ping Connectivity Verified: 0% packet loss (Replies received)."
-            results["details"] = [line for line in text.splitlines() if "Reply from" in line or "Packets:" in line]
-        elif "unreachable" in text or "timed out" in text or "100% loss" in text:
-            results["status"] = "Alert"
-            results["summary"] = "Ping Dropped / Blocked: Confirms ACL restriction or unreachable route."
-            results["details"] = [line for line in text.splitlines() if "timed out" in line or "unreachable" in line or "Packets:" in line]
+        results["summary"] = f"Detected {len(trunks)} active 802.1Q trunk port(s)."
+        results["details"] = trunks
 
     return results
