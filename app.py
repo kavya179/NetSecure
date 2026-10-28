@@ -8,6 +8,7 @@ Accurately mirrors verified Cisco Packet Tracer network facts without fabricated
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import ipaddress
 
 # Import custom modular helpers
 import importlib
@@ -451,13 +452,13 @@ if selected_page == "📊 1. Overview & Verified Inventory":
                 </div>
                 <ul style="font-size: 12px; color: #CBD5E1; margin: 0; padding-left: 18px; line-height: 1.6;">
                     <li><b>VLANs:</b> VLAN 10 (Management), VLAN 20 (finance), VLAN 30 (IT).</li>
-                    <li><b>Sample Switch Ports:</b> Fa0/1 -> VLAN 10, Fa0/2 -> VLAN 20, Fa0/3 -> VLAN 30.</li>
+                    <li><b>Sample Switch Ports:</b> Fa0/1 -> VLAN 10, Fa0/2 -> VLAN 20, Fa0/3 -> VLAN 30 (Observed on sample access switch CLI output; exact port mapping across all switches is unverified).</li>
                     <li><b>Sample Switch Trunk:</b> Gig0/1 trunking, 802.1Q, native VLAN 1, VLANs 10, 20, 30 allowed.</li>
                     <li><b>DHCP Pools:</b> Management (10.0/24, GW 10.1), finance (20.0/24, GW 20.1, DNS 8.8.8.8), IT (30.0/24, GW 30.1, DNS 8.8.8.8). Excluded: .1 on all.</li>
                     <li><b>PC0 Verified:</b> IP 192.168.10.3, Mask 255.255.255.0, Gateway 192.168.10.1.</li>
-                    <li><b>PC2 Verified:</b> IP 192.168.20.3 (local stack self-ping 4/4 verified).</li>
-                    <li><b>Confirmed Ping 1:</b> PC0 -> 192.168.10.1 (PASS, 4/4 received, 0% loss).</li>
-                    <li><b>Confirmed Ping 2:</b> PC0 -> 192.168.20.3 (PASS, 4/4 received, 0% loss; reachability to 20.0/24, believed to be PC2).</li>
+                    <li><b>PC2 Verified:</b> IP 192.168.20.3 (Verified via ipconfig screenshot).</li>
+                    <li><b>Confirmed Ping 1:</b> PC0 -> 192.168.10.1 (PASS, 4/4 received, 0% loss, Default Gateway).</li>
+                    <li><b>Confirmed Ping 2:</b> PC0 -> 192.168.20.3 (PASS, 4/4 received, 0% loss, Cross-Subnet Reachability).</li>
                 </ul>
             </div>
 
@@ -467,10 +468,10 @@ if selected_page == "📊 1. Overview & Verified Inventory":
                 </div>
                 <ul style="font-size: 12px; color: #94A3B8; margin: 0; padding-left: 18px; line-height: 1.6;">
                     <li>Multilayer Switch0 routing table (<code>show ip route</code>).</li>
-                    <li>All other PC & server IPs (PC1, PC3, PC4, PC5, Server0, Server1, Server2).</li>
-                    <li>Port assignments on Switch1 and Switch2 (not assumed identical).</li>
+                    <li>All other PC & server IPs (PC1, PC3, PC4, PC5, Server0, Server1, Server2) and switch management IPs.</li>
+                    <li>Exact port assignments on Switch0, Switch1, and Switch2 (treated as illustrative examples).</li>
                     <li>Server reachability and services (HTTP/DNS/SQL).</li>
-                    <li>ACL enforcement & restriction behavior in Packet Tracer.</li>
+                    <li>ACL enforcement & restriction behavior in Packet Tracer (illustrative templates only).</li>
                 </ul>
             </div>
         """, unsafe_allow_html=True)
@@ -510,19 +511,19 @@ elif selected_page == "🗺️ 2. Network Topology":
     st.markdown("### 📋 Complete Device Inventory & Port Mapping")
 
     inventory_data = [
-        {"Device": "Multilayer Switch0", "Role": "Core / Distribution", "Model": "Cisco Catalyst 3650", "Zone": "Core Backbone", "Interfaces": "Trunk uplinks to Switch0, Switch1, Switch2", "VLANs": "10, 20, 30 (SVIs)", "Verified_IP": "Gateways: 192.168.10.1, 192.168.20.1, 192.168.30.1", "Status": "VERIFIED MODEL"},
-        {"Device": "Switch0", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Purple (Management)", "Interfaces": "Gig0/1 (Verified Trunk), Fa0/1 (VLAN 10)", "VLANs": "VLAN 10", "Verified_IP": "Not configured/confirmed", "Status": "VERIFIED"},
-        {"Device": "PC0", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Connected to Switch0 Fa0/1)", "VLANs": "VLAN 10", "Verified_IP": "192.168.10.3 (Verified)", "Status": "VERIFIED (ipconfig)"},
-        {"Device": "PC1", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 10", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "Server0", "Role": "Management Server", "Model": "Generic Server", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 10", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "Switch1", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Yellow (finance)", "Interfaces": "Uplink trunk, Fa0/2 (VLAN 20 on sample)", "VLANs": "VLAN 20", "Verified_IP": "Not configured/confirmed", "Status": "VERIFIED MODEL"},
-        {"Device": "PC2", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Connected to Switch1)", "VLANs": "VLAN 20", "Verified_IP": "192.168.20.3 (Verified)", "Status": "VERIFIED (ipconfig)"},
-        {"Device": "PC3", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 20", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "Server1", "Role": "Finance Server", "Model": "Generic Server", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 20", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "Switch2", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Pink (IT)", "Interfaces": "Uplink trunk, Fa0/3 (VLAN 30 on sample)", "VLANs": "VLAN 30", "Verified_IP": "Not configured/confirmed", "Status": "VERIFIED MODEL"},
-        {"Device": "PC4", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "PC5", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"},
-        {"Device": "Server2", "Role": "IT Server", "Model": "Generic Server", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Not configured", "Status": "UNVERIFIED"}
+        {"Device": "Multilayer Switch0", "Role": "Core / Distribution", "Model": "Cisco Catalyst 3650", "Zone": "Core Backbone", "Interfaces": "Trunk uplinks to Switch0, Switch1, Switch2 (Example port mapping)", "VLANs": "10, 20, 30 (SVIs)", "Verified_IP": "Gateways: 192.168.10.1, 192.168.20.1, 192.168.30.1", "Status": "VERIFIED MODEL"},
+        {"Device": "Switch0", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Purple (Management)", "Interfaces": "Gig0/1 (Verified Trunk), Fa0/1 (Example/unverified port mapping)", "VLANs": "VLAN 10", "Verified_IP": "Unverified / Not configured", "Status": "VERIFIED"},
+        {"Device": "PC0", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port mapping to Switch0 Fa0/1 is example/unverified)", "VLANs": "VLAN 10", "Verified_IP": "192.168.10.3", "Status": "VERIFIED (ipconfig)"},
+        {"Device": "PC1", "Role": "Workstation", "Model": "Generic PC", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 10", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "Server0", "Role": "Management Server", "Model": "Generic Server", "Zone": "Purple (Management)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 10", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "Switch1", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Yellow (finance)", "Interfaces": "Uplink trunk, Fa0/2 (Example/unverified port mapping)", "VLANs": "VLAN 20", "Verified_IP": "Unverified / Not configured", "Status": "VERIFIED MODEL"},
+        {"Device": "PC2", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port mapping to Switch1 Fa0/2 is example/unverified)", "VLANs": "VLAN 20", "Verified_IP": "192.168.20.3", "Status": "VERIFIED (ipconfig)"},
+        {"Device": "PC3", "Role": "Workstation", "Model": "Generic PC", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 20", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "Server1", "Role": "Finance Server", "Model": "Generic Server", "Zone": "Yellow (finance)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 20", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "Switch2", "Role": "Access Switch", "Model": "Cisco Catalyst 2960", "Zone": "Pink (IT)", "Interfaces": "Uplink trunk, Fa0/3 (Example/unverified port mapping)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Not configured", "Status": "VERIFIED MODEL"},
+        {"Device": "PC4", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "PC5", "Role": "Workstation", "Model": "Generic PC", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"},
+        {"Device": "Server2", "Role": "IT Server", "Model": "Generic Server", "Zone": "Pink (IT)", "Interfaces": "FastEthernet0 (Port unverified / example)", "VLANs": "VLAN 30", "Verified_IP": "Unverified / Example only", "Status": "UNVERIFIED"}
     ]
 
     inv_df = pd.DataFrame(inventory_data)
@@ -640,27 +641,60 @@ elif selected_page == "🌐 3. VLAN & IP Addressing":
         user_cidr = st.text_input("Enter IPv4 Network Address with CIDR", value=default_calc_ip)
 
     with calc_c2:
-        calc_res = cisco_helpers.calculate_subnet_details(user_cidr)
-        if not calc_res["valid"]:
-            st.error(f"⚠️ {calc_res['error']}")
+        subnet_input = user_cidr.strip() if user_cidr else ""
+        if not subnet_input:
+            st.warning("Please enter an IPv4 network CIDR (e.g. 192.168.10.0/24, 10.0.0.0/26, 172.16.1.0/30).")
         else:
-            st.markdown(f"""
-                <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 13.5px; font-weight: 700; color: #38BDF8; margin-bottom: 8px;">
-                        Subnet Calculation Results for <code>{user_cidr}</code>:
+            try:
+                # Direct calculation using Python's standard ipaddress module with strict=False
+                raw_cidr = subnet_input if "/" in subnet_input else f"{subnet_input}/24"
+                net = ipaddress.ip_network(raw_cidr, strict=False)
+
+                # Calculate network properties
+                network_address = str(net.network_address)
+                netmask = str(net.netmask)
+                wildcard_mask = str(net.hostmask)
+                prefixlen = net.prefixlen
+                total_addresses = net.num_addresses
+                address_scope = "Private (RFC 1918)" if net.is_private else "Public Internet"
+
+                # Calculate broadcast and usable host range
+                if net.prefixlen <= 30:
+                    broadcast_address = str(net.broadcast_address)
+                    usable_hosts = max(0, net.num_addresses - 2)
+                    first_host = str(net.network_address + 1)
+                    last_host = str(net.broadcast_address - 1)
+                    usable_range = f"{first_host} - {last_host}"
+                elif net.prefixlen == 31:
+                    broadcast_address = "N/A (RFC 3021 Point-to-Point)"
+                    usable_hosts = 2
+                    usable_range = f"{net.network_address} - {net.broadcast_address} (RFC 3021 Point-to-Point)"
+                else:  # /32
+                    broadcast_address = "N/A (Single Host IP)"
+                    usable_hosts = 1
+                    usable_range = f"{net.network_address} (Single Host)"
+
+                st.markdown(f"""
+                    <div style="background: #111A2E; border: 1px solid #1E293B; border-radius: 10px; padding: 14px;">
+                        <div style="font-size: 13.5px; font-weight: 700; color: #38BDF8; margin-bottom: 8px;">
+                            Subnet Calculation Results for <code>{subnet_input}</code>:
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: #CBD5E1;">
+                            <div><b>Network Address:</b> <code>{network_address}</code></div>
+                            <div><b>Broadcast Address:</b> <code>{broadcast_address}</code></div>
+                            <div><b>Subnet Netmask:</b> <code>{netmask}</code></div>
+                            <div><b>Wildcard Mask:</b> <code>{wildcard_mask}</code></div>
+                            <div><b>Usable Host Range:</b> <code>{usable_range}</code></div>
+                            <div><b>Usable Hosts:</b> <code>{usable_hosts}</code> / {total_addresses} total</div>
+                            <div><b>CIDR Prefix:</b> <code>/{prefixlen}</code></div>
+                            <div><b>Address Scope:</b> <code>{address_scope}</code></div>
+                        </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; color: #CBD5E1;">
-                        <div><b>Network Base:</b> <code>{calc_res['network_address']}</code></div>
-                        <div><b>Broadcast IP:</b> <code>{calc_res['broadcast_address']}</code></div>
-                        <div><b>Subnet Netmask:</b> <code>{calc_res['netmask']}</code></div>
-                        <div><b>Wildcard Hostmask:</b> <code>{calc_res['wildcard_mask']}</code></div>
-                        <div><b>Usable Host Range:</b> <code>{calc_res['usable_range']}</code></div>
-                        <div><b>Usable Hosts:</b> <code>{calc_res['usable_hosts']}</code> / {calc_res['total_addresses']} total</div>
-                        <div><b>CIDR Prefix:</b> <code>/{calc_res['prefixlen']}</code></div>
-                        <div><b>Address Scope:</b> <code>{calc_res['ip_type']}</code></div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+            except ValueError as err:
+                st.error(f"⚠️ Invalid IPv4 CIDR input '{subnet_input}': {err}")
+            except Exception as err:
+                st.error(f"⚠️ Subnet calculation error: {err}")
 
 
 # -----------------------------------------------------------------------------
@@ -671,9 +705,9 @@ elif selected_page == "🔒 4. Security Policy & ACL Generator":
         <div class="noc-header">
             <div>
                 <h1 class="noc-title">🔒 Security Policy Matrix & Cisco IOS ACL Compiler</h1>
-                <p class="noc-subtitle">DYNAMIC COMPILATION OF PROPOSED ACCESS CONTROL LISTS FOR CATALYST 3650</p>
+                <p class="noc-subtitle">ILLUSTRATIVE CISCO IOS EXTENDED ACL SCRIPT GENERATOR FOR CATALYST 3650</p>
             </div>
-            <div class="noc-badge">Dynamic ACL Engine</div>
+            <div class="noc-badge">Illustrative Template Generator</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -681,10 +715,10 @@ elif selected_page == "🔒 4. Security Policy & ACL Generator":
         <div class="disclaimer-banner">
             <span style="font-size: 20px;">🛡️</span>
             <div>
-                <div class="disclaimer-title">Security Policy Notice</div>
+                <div class="disclaimer-title">Security Policy & ACL Notice</div>
                 The rules below represent <b>proposed security policies</b>.
-                They are NOT automatically applied to Cisco Packet Tracer.
-                The script generator dynamically converts the active table rows into real Cisco IOS syntax for <code>Multilayer Switch0</code>.
+                They are <b>NOT automatically applied</b> to Cisco Packet Tracer.
+                The generator compiles active policy and VLAN rows into Cisco IOS commands as an <b>illustrative template</b> for <code>Multilayer Switch0</code>.
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -760,7 +794,7 @@ elif selected_page == "🧪 5. Validation & Test Logs":
             <div>
                 <div class="disclaimer-title">Strict Verification Protocol</div>
                 <b>No test is marked as PASS unless verified by screenshot evidence or terminal execution.</b>
-                Only confirmed tests (PC0 gateway ping, PC0 inter-subnet ping, and PC2 local self-ping) are prepopulated as PASS.
+                Only confirmed tests (PC0 to 192.168.10.1 gateway ping and PC0 to 192.168.20.3 cross-subnet ping) are prepopulated as PASS.
                 All other checks are initialized to <b>NOT TESTED</b>.
             </div>
         </div>

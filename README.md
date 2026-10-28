@@ -44,38 +44,42 @@ The following facts were verified directly from project terminal and configurati
 - **Pool `IT`:** Network `192.168.30.0 255.255.255.0`, Default Gateway `192.168.30.1`, DNS `8.8.8.8`.
 *(Commands observed on a device with prompt `Switch>`. Multilayer Switch0 configuration remains to be verified).*
 
-### D. Verified PC Configurations & Connectivity Tests
+### D. Verified PC Configurations & Confirmed Network Tests
 - **`PC0` (Verified via `ipconfig`):**
   - IPv4 Address: `192.168.10.3`
   - Subnet Mask: `255.255.255.0`
   - Default Gateway: `192.168.10.1`
-- **`PC0 → 192.168.10.1` (Gateway Ping):** **PASS** (4 packets sent, 4 received, 0% loss, RTT <1ms).
-- **`PC0 → 192.168.20.3` (Inter-Subnet Reachability):** **PASS** (4 packets sent, 4 received, 0% loss). Demonstrates reachability across subnets to `192.168.20.0/24`. Destination is believed to be PC2 based on displayed PC2 info.
 - **`PC2` (Verified via `ipconfig`):**
-  - IPv4 Address: `192.168.20.3`.
-  - Self-ping test (`ping 192.168.20.3` from PC2): 4/4 packets received on second attempt. Verified local stack loopback (not an inter-VLAN test).
+  - IPv4 Address: `192.168.20.3`
+  - Subnet Mask: `255.255.255.0`
+  - Default Gateway: `192.168.20.1`
+
+#### Network Connectivity Tests Status:
+- **`PC0 → 192.168.10.1` (Default Gateway Ping):** **PASS** (4 packets sent, 4 received, 0% packet loss, RTT <1ms). Confirms local gateway reachability.
+- **`PC0 → 192.168.20.3` (Cross-Subnet Reachability Ping):** **PASS** (4 packets sent, 4 received, 0% packet loss). Confirms cross-subnet routing between VLAN 10 (`192.168.10.0/24`) and VLAN 20 (`192.168.20.0/24`). Destination IP matches PC2.
+- **All Other Tests (PC2 self-ping, servers, ACLs, switch ports):** **NOT TESTED**. Kept strictly as Not Tested to preserve academic integrity until direct Packet Tracer test output is recorded.
 
 ---
 
-## 3. What Still Requires Verification in Packet Tracer
+## 3. Unverified Items (Pending Direct CLI Confirmation)
 
-To preserve academic integrity, the following items are displayed as **UNVERIFIED / PENDING EVIDENCE**:
-1. **Central Multilayer Switch Routing:** Output of `show ip route` to confirm hardware IP routing and active SVIs.
-2. **Remaining Host IPs:** IP addresses for `PC1`, `PC3`, `PC4`, `PC5`, `Server0`, `Server1`, and `Server2`.
-3. **Switch Interface Assignments:** Port mappings on `Switch1` and `Switch2`.
-4. **Server Connectivity & Services:** Ping reachability and web/DNS/database services on Server0, 1, 2.
-5. **ACL Enforcement:** Empirical verification in CLI that unauthorized cross-department traffic is dropped and logged.
+To preserve academic integrity and avoid inventing values, the following items are treated as **EXAMPLES / UNVERIFIED**:
+1. **Unverified Endpoint IPs:** IP addresses for `PC1`, `PC3`, `PC4`, `PC5`, `Server0`, `Server1`, and `Server2` are unverified; they are marked as examples rather than confirmed values.
+2. **Access Switch Port Mappings:** Only sample switch ports (`Fa0/1 -> VLAN 10`, `Fa0/2 -> VLAN 20`, `Fa0/3 -> VLAN 30`, `Gig0/1 -> Trunk`) were observed in CLI; exact port connections across `Switch0`, `Switch1`, and `Switch2` are treated as illustrative models.
+3. **Multilayer Switch0 Routing Table:** Direct output of `show ip route` to confirm hardware IP routing and active SVIs.
+4. **Server Connectivity & Services:** Ping reachability and web/DNS/database services on Server0, Server1, Server2 remain unverified.
+5. **ACL Enforcement:** Empirical verification in CLI that unauthorized cross-department traffic is dropped and logged (ACL generator produces illustrative proposed templates).
 
 ---
 
-## 4. Key Dashboard Features & Bug Fixes
+## 4. Key Dashboard Features & Technical Implementation
 
-- **No Fabricated Telemetry:** Displays an explicit simulation notice: *"Packet Tracer simulation is not connected directly. Results are recorded manually from real CLI outputs."*
-- **Arbitrary IPv4 Subnet Calculator:** Uses Python's standard `ipaddress` module to calculate network base, broadcast address, netmask, wildcard hostmask, usable host range, and address scope for any valid CIDR prefix (`/0` to `/32`), such as `/24`, `/26`, `/30`, `/16`. Includes graceful error validation.
-- **Dynamic Cisco IOS Extended ACL Compiler:** Generates Cisco IOS commands dynamically from active rows in the editable security policy table, rather than static hardcoded text.
-- **Matplotlib Vector Topology:** Highlights confirmed links and verified devices (`PC0: 192.168.10.3`, `PC2: 192.168.20.3`) in Green, while marking unverified connections as illustrative models.
-- **Strict Evidence Validation Suite:** Prepopulates only confirmed tests as `PASS`. All other checks default to `NOT TESTED`. Test status options are strictly `NOT TESTED`, `PASS`, or `FAIL`.
+- **Strict Evidence Validation Suite:** Prepopulates **ONLY the 2 confirmed tests** (`PC0 → 192.168.10.1` and `PC0 → 192.168.20.3`) as `PASS`. All other 9 checks default to `NOT TESTED`. Test status options are strictly `NOT TESTED`, `PASS`, or `FAIL`.
+- **Arbitrary IPv4 Subnet Calculator:** Powered directly by Python's `ipaddress.ip_network(subnet_input, strict=False)`. Correctly calculates network address, broadcast address, subnet netmask, wildcard mask (`net.hostmask`), and usable host range for any CIDR prefix (`/0` to `/32`), including `/24`, `/26`, `/30`, and gracefully handles invalid input with user-friendly error messages.
+- **Illustrative Cisco IOS Extended ACL Script Generator:** Compiles Cisco IOS commands from the active editable Security Policy table and VLAN configuration table. Explicitly labeled as an illustrative template for proposed policies that must be manually applied to `Multilayer Switch0` in Packet Tracer.
+- **Matplotlib Vector Topology:** Highlights confirmed links and verified devices (`PC0: 192.168.10.3`, `PC2: 192.168.20.3`) in Green, while marking unverified connections and example ports with dotted illustrative styling.
 - **Live Terminal Output Inspector:** Paste CLI output from `ipconfig`, `ping`, `show vlan brief`, or `show interfaces trunk` to extract validation proof.
+- **No Fabricated Telemetry:** Displays an explicit simulation notice: *"Packet Tracer simulation is not connected directly. Results are recorded manually from real CLI outputs."*
 
 ---
 

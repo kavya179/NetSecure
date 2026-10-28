@@ -82,7 +82,7 @@ def get_initial_vlans_df():
             "Default_Gateway": "192.168.10.1",
             "DNS_Server": "Not specified in pool",
             "Assigned_Switch": "Switch0",
-            "Verified_Port_Sample": "Fa0/1 (Verified on sample switch)",
+            "Verified_Port_Sample": "Fa0/1 (Sample switch output; exact port mapping across switches is unverified/example)",
             "Config_Status": "VERIFIED in Packet Tracer"
         },
         {
@@ -94,7 +94,7 @@ def get_initial_vlans_df():
             "Default_Gateway": "192.168.20.1",
             "DNS_Server": "8.8.8.8",
             "Assigned_Switch": "Switch1",
-            "Verified_Port_Sample": "Fa0/2 (Verified on sample switch)",
+            "Verified_Port_Sample": "Fa0/2 (Sample switch output; exact port mapping across switches is unverified/example)",
             "Config_Status": "VERIFIED in Packet Tracer"
         },
         {
@@ -106,7 +106,7 @@ def get_initial_vlans_df():
             "Default_Gateway": "192.168.30.1",
             "DNS_Server": "8.8.8.8",
             "Assigned_Switch": "Switch2",
-            "Verified_Port_Sample": "Fa0/3 (Verified on sample switch)",
+            "Verified_Port_Sample": "Fa0/3 (Sample switch output; exact port mapping across switches is unverified/example)",
             "Config_Status": "VERIFIED in Packet Tracer"
         }
     ])
@@ -114,7 +114,8 @@ def get_initial_vlans_df():
 def get_initial_endpoints_df():
     """
     Returns endpoint device IP allocation table.
-    Explicitly distinguishes verified IPs (PC0, PC2) from unverified endpoints.
+    Explicitly distinguishes verified IPs (PC0: 192.168.10.3, PC2: 192.168.20.3)
+    from unverified endpoints and example port mappings.
     """
     return pd.DataFrame([
         # Purple Zone: Management (VLAN 10)
@@ -126,7 +127,7 @@ def get_initial_endpoints_df():
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
             "Connected_Switch": "Switch0",
-            "Switch_Port": "Fa0/1 (Verified on sample switch)",
+            "Switch_Port": "Fa0/1 (Example / unverified port mapping)",
             "IP_Allocation": "DHCP (Verified)",
             "Verification_Status": "VERIFIED",
             "Evidence": "Verified from PC0 ipconfig & ping screenshots"
@@ -135,27 +136,27 @@ def get_initial_endpoints_df():
             "Device_Name": "PC1",
             "Department": "Management",
             "VLAN_ID": 10,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
             "Connected_Switch": "Switch0",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
+            "Evidence": "Unverified in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server0",
             "Department": "Management",
             "VLAN_ID": 10,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.10.1",
             "Connected_Switch": "Switch0",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server IP and reachability not confirmed"
+            "Evidence": "Server IP and port mapping unverified"
         },
         # Yellow Zone: finance (VLAN 20)
         {
@@ -166,7 +167,7 @@ def get_initial_endpoints_df():
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
             "Connected_Switch": "Switch1",
-            "Switch_Port": "Fa0/2 (Verified on sample switch)",
+            "Switch_Port": "Fa0/2 (Example / unverified port mapping)",
             "IP_Allocation": "DHCP (Verified)",
             "Verification_Status": "VERIFIED",
             "Evidence": "Verified from PC2 ipconfig screenshot"
@@ -175,67 +176,67 @@ def get_initial_endpoints_df():
             "Device_Name": "PC3",
             "Department": "finance",
             "VLAN_ID": 20,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
             "Connected_Switch": "Switch1",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
+            "Evidence": "Unverified in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server1",
             "Department": "finance",
             "VLAN_ID": 20,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.20.1",
             "Connected_Switch": "Switch1",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server IP and reachability not confirmed"
+            "Evidence": "Server IP and port mapping unverified"
         },
         # Pink Zone: IT (VLAN 30)
         {
             "Device_Name": "PC4",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
-            "Switch_Port": "Fa0/3 (Verified on sample switch)",
+            "Switch_Port": "Fa0/3 (Example / unverified port mapping)",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
+            "Evidence": "Unverified in Packet Tracer evidence"
         },
         {
             "Device_Name": "PC5",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Not configured/confirmed in Packet Tracer evidence"
+            "Evidence": "Unverified in Packet Tracer evidence"
         },
         {
             "Device_Name": "Server2",
             "Department": "IT",
             "VLAN_ID": 30,
-            "IPv4_Address": "Unverified / Not configured",
+            "IPv4_Address": "Unverified / Example only",
             "Subnet_Mask": "255.255.255.0",
             "Default_Gateway": "192.168.30.1",
             "Connected_Switch": "Switch2",
-            "Switch_Port": "Unverified",
+            "Switch_Port": "Unverified / Example",
             "IP_Allocation": "Not configured/confirmed",
             "Verification_Status": "UNVERIFIED",
-            "Evidence": "Server IP and reachability not confirmed"
+            "Evidence": "Server IP and port mapping unverified"
         }
     ])
 
@@ -457,15 +458,19 @@ def init_session_state():
         
     if ("endpoints_df" not in st.session_state or 
         "IPv4_Address" not in st.session_state.endpoints_df.columns or 
-        any("192.168.10.x" in str(x) for x in st.session_state.endpoints_df.get("IPv4_Address", []))):
+        any("192.168.10.x" in str(x) for x in st.session_state.endpoints_df.get("IPv4_Address", [])) or
+        any(row.get("Device_Name") == "PC1" and "192.168." in str(row.get("IPv4_Address", "")) for _, row in st.session_state.endpoints_df.iterrows())):
         st.session_state.endpoints_df = get_initial_endpoints_df()
         
     if "security_policies_df" not in st.session_state or "Protocol" not in st.session_state.security_policies_df.columns:
         st.session_state.security_policies_df = get_initial_security_policies_df()
         
+    # Strictly enforce that only TEST-01 and TEST-02 are PASS by default
     if ("test_checklist" not in st.session_state or 
         any("source" not in t for t in st.session_state.test_checklist) or
-        any(t.get("id") == "TEST-03" and t.get("status") == "PASS" for t in st.session_state.test_checklist)):
+        sum(1 for t in st.session_state.test_checklist if t.get("status") == "PASS") != 2 or
+        any(t.get("id") not in ["TEST-01", "TEST-02"] and t.get("status") == "PASS" for t in st.session_state.test_checklist) or
+        any(t.get("id") in ["TEST-01", "TEST-02"] and t.get("status") != "PASS" for t in st.session_state.test_checklist)):
         st.session_state.test_checklist = get_initial_test_checklist()
 
 def get_test_stats():

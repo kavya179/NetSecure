@@ -89,11 +89,12 @@ def calculate_subnet_details(cidr_input: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 2. DYNAMIC CISCO EXTENDED ACL GENERATOR
+# 2. PROPOSED CISCO EXTENDED ACL COMPILER (ILLUSTRATIVE TEMPLATE GENERATOR)
 # ---------------------------------------------------------------------------
 def _parse_endpoint_to_cisco_str(raw_val: str, vlans_df: pd.DataFrame = None) -> tuple[str, str]:
     """
     Helper to translate a source/destination description into valid Cisco IOS ACL syntax.
+    Safely resolves department names, VLAN IDs, CIDRs, or specific host IPs.
     Returns: (cisco_syntax, error_explanation)
     """
     if not raw_val or not str(raw_val).strip():
@@ -102,19 +103,33 @@ def _parse_endpoint_to_cisco_str(raw_val: str, vlans_df: pd.DataFrame = None) ->
     val = str(raw_val).strip()
     val_lower = val.lower()
 
-    # Case: Any / All
-    if "any" in val_lower or "all" in val_lower and "vlan" not in val_lower:
+    # Case: Any / All / Internet
+    if val_lower in ["any", "all", "internet"]:
         return "any", ""
 
-    # Case: Known department names from Packet Tracer project
+    # Case: Dynamic resolution from active user-edited vlans_df
+    if vlans_df is not None and isinstance(vlans_df, pd.DataFrame) and not vlans_df.empty:
+        for _, vrow in vlans_df.iterrows():
+            v_name = str(vrow.get("VLAN_Name", "")).strip().lower()
+            v_id = str(vrow.get("VLAN_ID", "")).strip()
+            v_net = str(vrow.get("Network_Address", "")).strip()
+            # Check match against VLAN Name or VLAN ID
+            if (v_name and v_name in val_lower) or (v_id and (f"vlan {v_id}" in val_lower or f"vlan{v_id}" in val_lower)):
+                try:
+                    net = ipaddress.ip_network(v_net, strict=False)
+                    return f"{net.network_address} {net.hostmask}", ""
+                except ValueError:
+                    pass
+
+    # Case: Known department fallback matching Packet Tracer project facts
     if "management" in val_lower or "vlan 10" in val_lower or "vlan10" in val_lower:
         return "192.168.10.0 0.0.0.255", ""
     if "finance" in val_lower or "vlan 20" in val_lower or "vlan20" in val_lower:
         return "192.168.20.0 0.0.0.255", ""
-    if "it" in val_lower and ("vlan" in val_lower or val_lower.strip() == "it") or "vlan 30" in val_lower or "vlan30" in val_lower:
+    if ("it" in val_lower and ("vlan" in val_lower or val_lower.strip() == "it")) or "vlan 30" in val_lower or "vlan30" in val_lower:
         return "192.168.30.0 0.0.0.255", ""
 
-    # Case: Look for explicit IP address or CIDR in the string
+    # Case: Look for explicit IP network with CIDR prefix in the string
     match_cidr = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2})', val)
     if match_cidr:
         try:
@@ -123,6 +138,7 @@ def _parse_endpoint_to_cisco_str(raw_val: str, vlans_df: pd.DataFrame = None) ->
         except ValueError as e:
             return "", f"Invalid CIDR in '{val}': {e}"
 
+    # Case: Single Host IP address
     match_ip = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', val)
     if match_ip:
         ip_str = match_ip.group(1)
@@ -137,18 +153,23 @@ def _parse_endpoint_to_cisco_str(raw_val: str, vlans_df: pd.DataFrame = None) ->
 
 def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.DataFrame = None) -> str:
     """
-    Dynamically compiles real Cisco IOS Extended ACL commands from the user-selected
-    rows in security_policies_df.
-    Validates source, destination, action, protocol, and port/service.
-    If a rule cannot be safely translated, includes an informative warning remark.
+    Compiles Cisco IOS Extended ACL commands from user-edited security policies
+    and VLAN data safely.
+    CLEARLY LABELED AS AN ILLUSTRATIVE TEMPLATE: Commands represent proposed policies
+    and are NOT automatically pushed to Cisco Packet Tracer.
     """
     lines = [
         "! ===================================================================",
-        "! NetSecure: Cisco Catalyst 3650 Extended Access Control Lists (ACL)",
-        "! Dynamically Compiled from Active Dashboard Security Policy Matrix",
+        "! NetSecure: Cisco Catalyst 3650 Extended Access Control List (ACL)",
+        "! Proposed Policy Compiler (Illustrative Script Generator)",
         "! ===================================================================",
-        "! NOTICE: These commands represent proposed security policies.",
-        "! Packet Tracer is not connected live; apply and verify in Multilayer Switch0 CLI.",
+        "! IMPORTANT NOTICE & DISCLAIMER:",
+        "! - This configuration is compiled from the dashboard's active security",
+        "!   policy table and VLAN configuration table.",
+        "! - Packet Tracer is NOT connected live. These commands are NOT applied",
+        "!   automatically to your simulation.",
+        "! - To test these policies, copy this script and manually paste it into",
+        "!   the CLI of 'Multilayer Switch0' in Cisco Packet Tracer.",
         "! ===================================================================",
         "enable",
         "configure terminal",
@@ -176,9 +197,9 @@ def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.D
         purpose = str(row.get("Purpose", "")).strip()
 
         # Validate action
-        action = "deny" if "deny" in raw_act or "block" in raw_act or "drop" in raw_act else "permit"
+        action = "deny" if any(w in raw_act for w in ["deny", "block", "drop"]) else "permit"
 
-        # Validate source & destination
+        # Validate source & destination safely
         src_cisco, src_err = _parse_endpoint_to_cisco_str(raw_src, vlans_df)
         dst_cisco, dst_err = _parse_endpoint_to_cisco_str(raw_dst, vlans_df)
 
@@ -239,22 +260,41 @@ def generate_cisco_acl_script(security_policies_df: pd.DataFrame, vlans_df: pd.D
         "",
         "! -------------------------------------------------------------------",
         "! Inbound Interface Binding Commands (Apply on Multilayer Switch0 SVIs)",
-        "! -------------------------------------------------------------------",
-        "! Apply to VLAN 10 (Management Gateway):",
-        "interface Vlan10",
-        " ip access-group NETSECURE_ENTERPRISE_ACL in",
-        "exit",
-        "",
-        "! Apply to VLAN 20 (finance Gateway):",
-        "interface Vlan20",
-        " ip access-group NETSECURE_ENTERPRISE_ACL in",
-        "exit",
-        "",
-        "! Apply to VLAN 30 (IT Gateway):",
-        "interface Vlan30",
-        " ip access-group NETSECURE_ENTERPRISE_ACL in",
-        "exit",
-        "",
+        "! -------------------------------------------------------------------"
+    ])
+
+    if vlans_df is not None and isinstance(vlans_df, pd.DataFrame) and not vlans_df.empty:
+        for _, vrow in vlans_df.iterrows():
+            vid = str(vrow.get("VLAN_ID", "")).strip()
+            vname = str(vrow.get("VLAN_Name", "")).strip()
+            if vid:
+                lines.extend([
+                    f"! Apply to VLAN {vid} ({vname} Gateway SVI):",
+                    f"interface Vlan{vid}",
+                    " ip access-group NETSECURE_ENTERPRISE_ACL in",
+                    "exit",
+                    ""
+                ])
+    else:
+        lines.extend([
+            "! Apply to VLAN 10 (Management Gateway):",
+            "interface Vlan10",
+            " ip access-group NETSECURE_ENTERPRISE_ACL in",
+            "exit",
+            "",
+            "! Apply to VLAN 20 (finance Gateway):",
+            "interface Vlan20",
+            " ip access-group NETSECURE_ENTERPRISE_ACL in",
+            "exit",
+            "",
+            "! Apply to VLAN 30 (IT Gateway):",
+            "interface Vlan30",
+            " ip access-group NETSECURE_ENTERPRISE_ACL in",
+            "exit",
+            ""
+        ])
+
+    lines.extend([
         "end",
         "! Verification CLI Commands:",
         "show access-lists",

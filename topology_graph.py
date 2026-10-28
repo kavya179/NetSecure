@@ -152,11 +152,11 @@ def render_topology_diagram():
     ax.text(mls_x, mls_y - 0.34, "Gateways: Vlan10 (192.168.10.1) · Vlan20 (192.168.20.1) · Vlan30 (192.168.30.1)",
             ha='center', va='center', fontsize=6.8, color=text_muted, zorder=11)
 
-    # Department Device Inventory mapping
+    # Department Device Inventory mapping (Ports on access switches are illustrative examples)
     dept_devices = [
-        ('Purple', 'Switch0', 'PC0', 'PC1', 'Server0', 'Fa0/1', 'Unconfirmed', 'Unconfirmed'),
-        ('Yellow', 'Switch1', 'PC2', 'PC3', 'Server1', 'Fa0/2', 'Unconfirmed', 'Unconfirmed'),
-        ('Pink', 'Switch2', 'PC4', 'PC5', 'Server2', 'Fa0/3', 'Unconfirmed', 'Unconfirmed')
+        ('Purple', 'Switch0', 'PC0', 'PC1', 'Server0', 'Fa0/1 (Ex)', 'Unconfirmed', 'Unconfirmed'),
+        ('Yellow', 'Switch1', 'PC2', 'PC3', 'Server1', 'Fa0/2 (Ex)', 'Unconfirmed', 'Unconfirmed'),
+        ('Pink', 'Switch2', 'PC4', 'PC5', 'Server2', 'Fa0/3 (Ex)', 'Unconfirmed', 'Unconfirmed')
     ]
 
     for color_key, sw_name, pc_a_name, pc_b_name, srv_name, p_a, p_b, p_srv in dept_devices:
